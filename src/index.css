@@ -1,0 +1,564 @@
+@import "tailwindcss";
+
+/* ===== shadcn/ui Emerald Theme Variables ===== */
+:root {
+  --radius: 0rem;
+  
+  /* Base Colors - Zinc */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  
+  /* Primary - Emerald */
+  --primary: oklch(0.696 0.17 162.48);
+  --primary-foreground: oklch(0.982 0.018 155.826);
+  
+  /* Secondary */
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  
+  /* Muted */
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  
+  /* Accent */
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  
+  /* Destructive */
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  
+  /* Border & Input */
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.696 0.17 162.48);
+  
+  /* Chart Colors */
+  --chart-1: oklch(0.696 0.17 162.48);
+  --chart-2: oklch(0.828 0.189 84.429);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  
+  /* Sidebar */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.552 0.016 285.938);
+  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.696 0.17 162.48);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  
+  --card: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.985 0 0);
+  
+  --popover: oklch(0.141 0.005 285.823);
+  --popover-foreground: oklch(0.985 0 0);
+  
+  --primary: oklch(0.696 0.17 162.48);
+  --primary-foreground: oklch(0.982 0.018 155.826);
+  
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.704 0.191 22.216);
+  
+  --border: oklch(0.274 0.006 286.033);
+  --input: oklch(0.274 0.006 286.033);
+  --ring: oklch(0.696 0.17 162.48);
+  
+  --chart-1: oklch(0.696 0.17 162.48);
+  --chart-2: oklch(0.828 0.189 84.429);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.705 0.015 286.067);
+  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.274 0.006 286.033);
+  --sidebar-ring: oklch(0.696 0.17 162.48);
+}
+
+/* ===== Base Styles ===== */
+@layer base {
+  * {
+    @apply border-[var(--border)];
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)];
+    font-family: 'Inter', 'JetBrains Mono', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ===== WarperGrid Component Styles ===== */
+@layer components {
+  .warper-grid {
+    @apply w-full h-full overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)];
+    display: flex;
+    flex-direction: column;
+    /* Disable text selection for spreadsheet-like experience */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  .warper-grid-header {
+    @apply flex-shrink-0 bg-[var(--muted)] border-b border-[var(--border)];
+  }
+
+  .warper-grid-header-row {
+    @apply flex;
+  }
+
+  .warper-grid-header-cell {
+    @apply flex items-center px-3 py-2 text-sm font-semibold text-[var(--foreground)] select-none;
+    @apply border-r border-[var(--border)] last:border-r-0;
+  }
+
+  .warper-grid-header-cell--sortable {
+    @apply cursor-pointer hover:bg-[var(--accent)];
+  }
+
+  .warper-grid-header-cell--sorted {
+    @apply bg-[var(--accent)];
+  }
+
+  .warper-grid-body {
+    @apply flex-1 overflow-auto;
+  }
+
+  .warper-grid-row {
+    @apply flex border-b border-[var(--border)] last:border-b-0;
+    @apply hover:bg-[var(--accent)] transition-colors duration-150;
+  }
+
+  .warper-grid-row--selected {
+    @apply bg-[var(--primary)]/10;
+  }
+
+  .warper-grid-row--striped:nth-child(even) {
+    @apply bg-[var(--muted)]/50;
+  }
+
+  .warper-grid-cell {
+    @apply flex items-center px-3 py-2 text-sm text-[var(--foreground)];
+    @apply border-r border-[var(--border)] last:border-r-0;
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+    cursor: cell;
+  }
+
+  .warper-grid-cell--editable {
+    @apply cursor-text;
+  }
+
+  .warper-grid-cell--editing {
+    @apply p-0;
+    /* Allow text selection only when editing */
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Resizer Handle */
+  .warper-grid-resizer {
+    @apply absolute right-0 top-0 h-full w-1 cursor-col-resize;
+    @apply bg-transparent hover:bg-[var(--primary)] transition-colors;
+  }
+
+  .warper-grid-resizer--resizing {
+    @apply bg-[var(--primary)];
+  }
+
+  /* Pagination */
+  .warper-grid-pagination {
+    @apply flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[var(--muted)];
+  }
+
+  /* Filter Panel */
+  .warper-grid-filter {
+    @apply px-3 py-2 border-b border-[var(--border)] bg-[var(--muted)]/50;
+  }
+
+  /* Loading & Empty States */
+  .warper-grid-loading {
+    @apply flex items-center justify-center h-full text-[var(--muted-foreground)];
+  }
+
+  .warper-grid-empty {
+    @apply flex items-center justify-center h-full text-[var(--muted-foreground)];
+  }
+
+  /* Pinned Columns */
+  .warper-grid-pinned-left {
+    @apply sticky left-0 z-10 bg-[var(--card)] shadow-[2px_0_4px_rgba(0,0,0,0.1)];
+  }
+
+  .warper-grid-pinned-right {
+    @apply sticky right-0 z-10 bg-[var(--card)] shadow-[-2px_0_4px_rgba(0,0,0,0.1)];
+  }
+
+  /* ===== Context Menu ===== */
+  .warper-context-menu {
+    @apply min-w-[200px] bg-[var(--popover)] border border-[var(--border)] rounded-lg shadow-xl;
+    @apply py-1 overflow-hidden;
+    animation: warper-fade-in 0.15s ease-out;
+  }
+
+  .warper-context-menu--submenu {
+    @apply absolute left-full top-0 ml-1;
+  }
+
+  .warper-context-menu-item {
+    @apply flex items-center gap-3 px-3 py-2 text-sm cursor-pointer relative;
+    @apply hover:bg-[var(--accent)] transition-colors;
+  }
+
+  .warper-context-menu-item--disabled {
+    @apply opacity-50 cursor-not-allowed hover:bg-transparent;
+  }
+
+  .warper-context-menu-item-icon {
+    @apply w-4 h-4 flex items-center justify-center text-[var(--muted-foreground)];
+  }
+
+  .warper-context-menu-item-name {
+    @apply flex-1;
+  }
+
+  .warper-context-menu-item-shortcut {
+    @apply text-xs text-[var(--muted-foreground)] font-mono;
+  }
+
+  .warper-context-menu-separator {
+    @apply h-px bg-[var(--border)] my-1 mx-2;
+  }
+
+  /* ===== Column Menu ===== */
+  .warper-column-menu {
+    @apply min-w-[220px] bg-[var(--popover)] border border-[var(--border)] rounded-lg shadow-xl;
+    @apply overflow-hidden;
+    animation: warper-fade-in 0.15s ease-out;
+  }
+
+  .warper-column-menu--submenu {
+    @apply absolute left-full top-0 ml-1;
+  }
+
+  .warper-column-menu-tabs {
+    @apply flex border-b border-[var(--border)];
+  }
+
+  .warper-column-menu-tab {
+    @apply flex-1 px-4 py-2 text-sm font-medium text-center;
+    @apply hover:bg-[var(--accent)] transition-colors;
+    @apply border-b-2 border-transparent;
+  }
+
+  .warper-column-menu-tab--active {
+    @apply border-b-2 border-[var(--primary)] text-[var(--primary)];
+  }
+
+  .warper-column-menu-content {
+    @apply py-1 max-h-[300px] overflow-y-auto;
+  }
+
+  .warper-column-menu-item {
+    @apply flex items-center gap-3 px-3 py-2 text-sm cursor-pointer relative;
+    @apply hover:bg-[var(--accent)] transition-colors;
+  }
+
+  .warper-column-menu-item--disabled {
+    @apply opacity-50 cursor-not-allowed hover:bg-transparent;
+  }
+
+  .warper-column-menu-item-check {
+    @apply w-4 h-4 flex items-center justify-center;
+  }
+
+  .warper-column-menu-item-icon {
+    @apply w-4 h-4 flex items-center justify-center text-[var(--muted-foreground)];
+  }
+
+  .warper-column-menu-item-name {
+    @apply flex-1;
+  }
+
+  .warper-column-menu-separator {
+    @apply h-px bg-[var(--border)] my-1 mx-2;
+  }
+
+  .warper-column-menu-columns {
+    @apply max-h-[250px] overflow-y-auto;
+  }
+
+  /* ===== Status Bar ===== */
+  .warper-status-bar {
+    @apply flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[var(--muted)];
+    @apply text-xs text-[var(--muted-foreground)];
+  }
+
+  .warper-status-bar-left {
+    @apply flex items-center gap-4;
+  }
+
+  .warper-status-bar-center {
+    @apply flex items-center gap-4;
+  }
+
+  .warper-status-bar-right {
+    @apply flex items-center gap-4;
+  }
+
+  .warper-status-panel {
+    @apply flex items-center gap-1.5;
+  }
+
+  .warper-status-panel--stats {
+    @apply gap-4;
+  }
+
+  .warper-status-label {
+    @apply text-[var(--muted-foreground)];
+  }
+
+  .warper-status-value {
+    @apply font-medium text-[var(--foreground)];
+  }
+
+  .warper-status-separator {
+    @apply text-[var(--border)] mx-1;
+  }
+
+  .warper-status-stat {
+    @apply flex items-center gap-1;
+  }
+
+  .warper-status-stat-label {
+    @apply text-[var(--muted-foreground)];
+  }
+
+  .warper-status-stat-value {
+    @apply font-mono font-medium text-[var(--foreground)];
+  }
+
+  /* ===== Cell Selection - Spreadsheet-like ===== */
+  .warper-grid-cell--selected {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.25) 100%);
+    position: relative;
+  }
+
+  /* Selection border - only on outer edges of selection range */
+  .warper-grid-cell--selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid var(--primary);
+    opacity: 0.8;
+  }
+
+  /* Inner cells in range - no border, just background */
+  .warper-grid-cell--selected.warper-grid-cell--inner {
+    background: rgba(16, 185, 129, 0.12);
+  }
+  
+  .warper-grid-cell--selected.warper-grid-cell--inner::after {
+    border: none;
+  }
+
+  /* Active cell - the one with keyboard focus */
+  .warper-grid-cell--active {
+    background: rgba(16, 185, 129, 0.25) !important;
+    box-shadow: inset 0 0 0 2px var(--primary), 0 0 0 1px var(--primary);
+    z-index: 5;
+  }
+
+  .warper-grid-cell--active::after {
+    border: 2px solid var(--primary) !important;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  }
+
+  /* Range corners for visual feedback */
+  .warper-grid-cell--range-top-left::after {
+    border-top-left-radius: 2px;
+  }
+  
+  .warper-grid-cell--range-top-right::after {
+    border-top-right-radius: 2px;
+  }
+  
+  .warper-grid-cell--range-bottom-left::after {
+    border-bottom-left-radius: 2px;
+  }
+  
+  .warper-grid-cell--range-bottom-right::after {
+    border-bottom-right-radius: 2px;
+  }
+
+  /* Fill Handle - for drag-fill like Excel */
+  .warper-fill-handle {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border: 2px solid var(--background);
+    border-radius: 1px;
+    cursor: crosshair;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  .warper-fill-handle:hover {
+    transform: scale(1.2);
+  }
+
+  /* Copy indicator animation */
+  .warper-grid-cell--copying {
+    animation: warper-copy-pulse 0.5s ease-out;
+  }
+
+  @keyframes warper-copy-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  /* Cut indicator - dashed border */
+  .warper-grid-cell--cut {
+    position: relative;
+  }
+
+  .warper-grid-cell--cut::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px dashed var(--primary);
+    animation: warper-marching-ants 1s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes warper-marching-ants {
+    0% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 16; }
+  }
+
+  /* ===== Cell Editing ===== */
+  .warper-grid-cell--editing {
+    @apply p-0 bg-[var(--background)];
+  }
+
+  .warper-cell-editor {
+    @apply w-full h-full px-3 py-2 border-none outline-none;
+    @apply bg-[var(--background)] text-[var(--foreground)];
+    @apply focus:ring-2 focus:ring-[var(--primary)] focus:ring-inset;
+  }
+
+  .warper-cell-editor-select {
+    @apply w-full h-full appearance-none cursor-pointer;
+    @apply bg-[var(--background)] text-[var(--foreground)];
+  }
+
+  /* ===== Row Grouping ===== */
+  .warper-group-row {
+    @apply bg-[var(--muted)] font-medium;
+  }
+
+  .warper-group-row-content {
+    @apply flex items-center gap-2 px-3 py-2;
+  }
+
+  .warper-group-expand-icon {
+    @apply w-4 h-4 cursor-pointer transition-transform;
+  }
+
+  .warper-group-expand-icon--expanded {
+    @apply rotate-90;
+  }
+
+  .warper-group-label {
+    @apply flex-1;
+  }
+
+  .warper-group-count {
+    @apply text-[var(--muted-foreground)] text-xs;
+  }
+
+  .warper-group-aggregation {
+    @apply text-[var(--muted-foreground)] font-mono text-xs;
+  }
+
+  /* ===== Master-Detail ===== */
+  .warper-master-row {
+    @apply cursor-pointer;
+  }
+
+  .warper-master-expand-icon {
+    @apply w-4 h-4 transition-transform cursor-pointer;
+  }
+
+  .warper-master-expand-icon--expanded {
+    @apply rotate-90;
+  }
+
+  .warper-detail-row {
+    @apply bg-[var(--muted)]/50 border-l-4 border-[var(--primary)];
+  }
+
+  .warper-detail-content {
+    @apply p-4;
+  }
+
+  /* ===== Tooltip ===== */
+  .warper-tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs rounded bg-[var(--foreground)] text-[var(--background)];
+    @apply shadow-lg pointer-events-none;
+    animation: warper-fade-in 0.15s ease-out;
+  }
+}
+
+/* ===== Animation Utilities ===== */
+@keyframes warper-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes warper-slide-in {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.warper-animate-fade-in {
+  animation: warper-fade-in 0.2s ease-out;
+}
+
+.warper-animate-slide-in {
+  animation: warper-slide-in 0.2s ease-out;
+}

@@ -1,0 +1,1149 @@
+import {
+  useReducer,
+  useRef,
+  useEffect,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+  useState,
+  memo,
+  type ForwardedRef,
+  type ReactNode,
+} from 'react';
+import { useVirtualizer } from '@itsmeadarsh/warper';
+import { cn } from '@/lib/utils';
+import {
+  gridReducer,
+  createInitialState,
+  createGridApi,
+  GridProvider,
+  type GridAction,
+} from './context';
+import { sortData } from './plugins/sorting';
+import { filterData } from './plugins/filtering';
+import { paginateData } from './plugins/pagination';
+import { GridHeader } from './components/GridHeader';
+import { GridPagination } from './components/GridPagination';
+import { ContextMenu } from './components/ContextMenu';
+import { StatusBar } from './components/StatusBar';
+import { PluginManager } from './plugin-manager';
+import type {
+  RowData,
+  WarperGridProps,
+  GridApi,
+  CellValue,
+  PluginName,
+  PluginConfig,
+  ComputedColumn,
+  CellRendererParams,
+} from './types';
+import type { ContextMenuState } from './plugins/context-menu';
+import type { CellPosition } from './plugins/cell-selection';
+
+// ============================================================================
+// Performance-Optimized Grid Cell Component
+// ============================================================================
+
+interface GridCellProps<TData extends RowData> {
+  col: ComputedColumn<TData>;
+  colIndex: number;
+  rowIndex: number;
+  rowData: TData;
+  api: GridApi<TData>;
+  isSelected?: boolean;
+  isActive?: boolean;
+  isCut?: boolean;
+  onCellClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
+  onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
+  onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+}
+
+function GridCellInner<TData extends RowData>({
+  col,
+  colIndex,
+  rowIndex,
+  rowData,
+  api,
+  isSelected,
+  isActive,
+  isCut,
+  onCellClick,
+  onCellDoubleClick,
+  onCellMouseDown,
+  onCellMouseEnter,
+}: GridCellProps<TData>) {
+  const value = col.field
+    ? (rowData as Record<string, unknown>)[col.field as string] as CellValue
+    : null;
+
+  // Compute display value only if formatter exists
+  const displayValue = col.valueFormatter
+    ? col.valueFormatter({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
+    : value;
+
+  // Pre-compute styles only if dynamic
+  const cellClass = typeof col.cellClass === 'function'
+    ? col.cellClass({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
+    : col.cellClass;
+
+  const cellStyle = typeof col.cellStyle === 'function'
+    ? col.cellStyle({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
+    : col.cellStyle;
+
+  return (
+    <div
+      className={cn(
+        'warper-grid-cell',
+        cellClass,
+        isSelected && 'warper-grid-cell--selected',
+        isActive && 'warper-grid-cell--active',
+        isCut && 'warper-grid-cell--cut'
+      )}
+      style={{
+        width: col.computedWidth,
+        minWidth: col.minWidth,
+        maxWidth: col.maxWidth,
+        textAlign: col.align || 'left',
+        ...cellStyle,
+      }}
+      onClick={onCellClick ? (e) => { e.stopPropagation(); onCellClick(rowIndex, col.id, value, rowData, e); } : undefined}
+      onDoubleClick={onCellDoubleClick ? (e) => { e.stopPropagation(); onCellDoubleClick(rowIndex, col.id, value, rowData, e); } : undefined}
+      onMouseDown={onCellMouseDown ? (e) => { onCellMouseDown(rowIndex, col.id, e); } : undefined}
+      onMouseEnter={onCellMouseEnter ? (e) => { onCellMouseEnter(rowIndex, col.id, e); } : undefined}
+    >
+      {col.cellRenderer ? (
+        (col.cellRenderer as (params: CellRendererParams<TData>) => ReactNode)({
+          value,
+          data: rowData,
+          column: col,
+          columnIndex: colIndex,
+          rowIndex,
+          api,
+          params: col.cellRendererParams,
+          refreshCell: () => {},
+          setValue: () => {},
+        })
+      ) : (
+        <span className="truncate">
+          {displayValue != null ? String(displayValue) : ''}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const GridCell = memo(GridCellInner) as typeof GridCellInner;
+
+// ============================================================================
+// Performance-Optimized Grid Row Component
+// ============================================================================
+
+interface GridRowProps<TData extends RowData> {
+  rowIndex: number;
+  rowData: TData;
+  rowId: string | number;
+  columns: ComputedColumn<TData>[];
+  totalWidth: number;
+  offset: number;
+  height: number;
+  isSelected: boolean;
+  striped: boolean;
+  api: GridApi<TData>;
+  selectedCells?: Set<string>;
+  activeCell?: CellPosition | null;
+  cutCells?: Set<string>;
+  onRowClick?: (rowIndex: number, data: TData, event: React.MouseEvent) => void;
+  onCellClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
+  onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
+  onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+}
+
+function GridRowInner<TData extends RowData>({
+  rowIndex,
+  rowData,
+  columns,
+  totalWidth,
+  offset,
+  height,
+  isSelected,
+  striped,
+  api,
+  selectedCells,
+  activeCell,
+  cutCells,
+  onRowClick,
+  onCellClick,
+  onCellDoubleClick,
+  onCellMouseDown,
+  onCellMouseEnter,
+}: GridRowProps<TData>) {
+  return (
+    <div
+      className={cn(
+        'warper-grid-row',
+        isSelected && 'warper-grid-row--selected',
+        striped && 'warper-grid-row--striped'
+      )}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        transform: `translateY(${offset}px)`,
+        height,
+        width: totalWidth,
+        display: 'flex',
+      }}
+      onClick={onRowClick ? (e) => onRowClick(rowIndex, rowData, e) : undefined}
+    >
+      {columns.map((col, colIndex) => {
+        const cellKey = `${rowIndex}:${col.id}`;
+        const isCellSelected = selectedCells?.has(cellKey) ?? false;
+        const isCellActive = activeCell?.rowIndex === rowIndex && activeCell?.colId === col.id;
+        const isCellCut = cutCells?.has(cellKey) ?? false;
+        
+        return (
+          <GridCell
+            key={col.id}
+            col={col}
+            colIndex={colIndex}
+            rowIndex={rowIndex}
+            rowData={rowData}
+            api={api}
+            isSelected={isCellSelected}
+            isActive={isCellActive}
+            isCut={isCellCut}
+            onCellClick={onCellClick}
+            onCellDoubleClick={onCellDoubleClick}
+            onCellMouseDown={onCellMouseDown}
+            onCellMouseEnter={onCellMouseEnter}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+const GridRow = memo(GridRowInner, (prev, next) => {
+  // Custom comparison for better performance
+  return (
+    prev.rowIndex === next.rowIndex &&
+    prev.offset === next.offset &&
+    prev.height === next.height &&
+    prev.isSelected === next.isSelected &&
+    prev.totalWidth === next.totalWidth &&
+    prev.rowData === next.rowData &&
+    prev.columns === next.columns &&
+    prev.selectedCells === next.selectedCells &&
+    prev.activeCell === next.activeCell &&
+    prev.cutCells === next.cutCells
+  );
+}) as typeof GridRowInner;
+
+// ============================================================================
+// WarperGrid Component
+// ============================================================================
+
+export interface WarperGridRef<TData extends RowData = RowData> {
+  /** Grid API for programmatic control */
+  api: GridApi<TData>;
+  /** Attach plugins */
+  attach: (plugins: PluginName[], config?: PluginConfig) => void;
+  /** Detach plugins */
+  detach: (plugins: PluginName[]) => void;
+}
+
+function WarperGridInner<TData extends RowData>(
+  props: WarperGridProps<TData>,
+  ref: ForwardedRef<WarperGridRef<TData>>
+) {
+  const {
+    data,
+    columns,
+    rowHeight = 40,
+    headerHeight = 44,
+    height = '100%',
+    width = '100%',
+    overscan = 10, // Increased for smoother scrolling
+    striped = false,
+    bordered = true,
+    compact = false,
+    loading = false,
+    emptyMessage = 'No data to display',
+    loadingComponent,
+    emptyComponent,
+    className,
+    style,
+    getRowId,
+    onCellClick,
+    onCellDoubleClick,
+    onRowClick,
+    onSelectionChanged,
+    onSortChanged,
+    onFilterChanged,
+    onPageChanged,
+    onGridReady,
+  } = props;
+
+  // Initialize state
+  const [state, dispatch] = useReducer(
+    gridReducer<TData>,
+    { data, columns },
+    ({ data, columns }) => createInitialState(data, columns)
+  );
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    rowIndex: null,
+    colId: null,
+    value: null,
+  });
+
+  // Cell selection state
+  const [cellSelection, setCellSelection] = useState<{
+    selectedCells: Set<string>;
+    activeCell: CellPosition | null;
+    anchorCell: CellPosition | null;
+    isSelecting: boolean;
+  }>({
+    selectedCells: new Set(),
+    activeCell: null,
+    anchorCell: null,
+    isSelecting: false,
+  });
+
+  // Currently focused cell for context menu
+  const focusedCellRef = useRef<{ rowIndex: number; colId: string; data: TData | null }>({
+    rowIndex: -1,
+    colId: '',
+    data: null,
+  });
+
+  // Plugin manager - singleton per grid instance
+  const pluginManagerRef = useRef<PluginManager<TData> | null>(null);
+  if (!pluginManagerRef.current) {
+    pluginManagerRef.current = new PluginManager<TData>();
+  }
+
+  // Virtualizer ref for scrolling
+  const scrollToIndexRef = useRef<((index: number, behavior?: ScrollBehavior) => void) | null>(null);
+
+  // State ref for API
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // Create grid API (memoized)
+  const api = useMemo(
+    () => createGridApi<TData>(
+      stateRef as React.MutableRefObject<typeof state>,
+      dispatch,
+      (index, behavior) => scrollToIndexRef.current?.(index, behavior)
+    ),
+    []
+  );
+
+  // Initialize plugin manager
+  useEffect(() => {
+    pluginManagerRef.current!.init(api);
+  }, [api]);
+
+  // Expose ref methods
+  useImperativeHandle(ref, () => ({
+    api,
+    attach: (plugins: PluginName[], config?: PluginConfig) => {
+      pluginManagerRef.current!.attach(plugins, config);
+    },
+    detach: (plugins: PluginName[]) => {
+      pluginManagerRef.current!.detach(plugins);
+    },
+  }), [api]);
+
+  // Sync data prop to state (batch update)
+  useEffect(() => {
+    if (data !== state.data) {
+      dispatch({ type: 'SET_DATA', payload: data });
+    }
+  }, [data]);
+
+  // Sync columns prop to state
+  useEffect(() => {
+    if (columns !== state.columns) {
+      dispatch({ type: 'SET_COLUMNS', payload: columns });
+    }
+  }, [columns]);
+
+  // Memoized column value getter
+  const getColumnValue = useCallback((row: TData, colId: string): CellValue => {
+    const col = state.columns.find(c => c.id === colId);
+    if (!col) return null;
+
+    if (col.valueGetter) {
+      return col.valueGetter({
+        data: row,
+        column: col,
+        columnIndex: state.columns.indexOf(col),
+        rowIndex: 0,
+        api,
+      });
+    }
+
+    if (col.field) {
+      return (row as Record<string, unknown>)[col.field as string] as CellValue;
+    }
+
+    return null;
+  }, [state.columns, api]);
+
+  // Process data (filter, sort) - heavily optimized
+  const processedData = useMemo(() => {
+    // Skip processing if no filters/sorts
+    const hasFilters = state.filterModel.length > 0 || state.quickFilterText;
+    const hasSorts = state.sortModel.length > 0;
+    
+    if (!hasFilters && !hasSorts) {
+      return state.data;
+    }
+
+    let result = state.data;
+
+    // Filter only if needed
+    if (hasFilters) {
+      const getRowValues = (row: TData): CellValue[] => {
+        return state.columns.map(col => getColumnValue(row, col.id));
+      };
+
+      result = filterData(
+        result,
+        state.filterModel,
+        state.quickFilterText,
+        getColumnValue,
+        getRowValues
+      );
+    }
+
+    // Sort only if needed
+    if (hasSorts) {
+      result = sortData(
+        result,
+        state.sortModel,
+        getColumnValue,
+        (colId) => state.columns.find(c => c.id === colId)?.comparator
+      );
+    }
+
+    return result;
+  }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue]);
+
+  // Update processed data in state (debounced)
+  useEffect(() => {
+    dispatch({ type: 'UPDATE_PROCESSED_DATA', payload: processedData });
+  }, [processedData]);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    if (!pluginManagerRef.current!.isLoaded('pagination')) {
+      return processedData;
+    }
+    return paginateData(processedData, state.page, state.pageSize);
+  }, [processedData, state.page, state.pageSize]);
+
+  // Compute column widths (memoized)
+  const computedColumns = useMemo((): ComputedColumn<TData>[] => {
+    const visibleColumns = state.columns.filter(col => {
+      const colState = state.columnState.get(col.id);
+      return !(col.hide || colState?.hide);
+    });
+
+    let totalOffset = 0;
+    return visibleColumns.map(col => {
+      const colState = state.columnState.get(col.id);
+      const computedWidth = colState?.width ?? col.width ?? 150;
+      const computed: ComputedColumn<TData> = {
+        ...col,
+        computedWidth,
+        offsetLeft: totalOffset,
+      };
+      totalOffset += computedWidth;
+      return computed;
+    });
+  }, [state.columns, state.columnState]);
+
+  // Total row width
+  const totalWidth = useMemo(() => 
+    computedColumns.reduce((sum, col) => sum + col.computedWidth, 0),
+  [computedColumns]);
+
+  // Setup virtualizer
+  const {
+    scrollElementRef,
+    range,
+    totalHeight,
+    isLoading: wasmLoading,
+    error: wasmError,
+    scrollToIndex,
+  } = useVirtualizer({
+    itemCount: paginatedData.length,
+    estimateSize: () => rowHeight,
+    overscan,
+  });
+
+  // Store scrollToIndex ref
+  useEffect(() => {
+    scrollToIndexRef.current = scrollToIndex;
+  }, [scrollToIndex]);
+
+  // Event callbacks (stable references)
+  const handleRowClick = useCallback((rowIndex: number, data: TData, event: React.MouseEvent) => {
+    onRowClick?.({
+      type: 'rowClick',
+      rowIndex,
+      data,
+      event,
+      api,
+    });
+  }, [onRowClick, api]);
+
+  const handleCellClick = useCallback((rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => {
+    onCellClick?.({
+      type: 'cellClick',
+      rowIndex,
+      colId,
+      value,
+      data,
+      event,
+      api,
+    });
+  }, [onCellClick, api]);
+
+  const handleCellDoubleClick = useCallback((rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => {
+    onCellDoubleClick?.({
+      type: 'cellDoubleClick',
+      rowIndex,
+      colId,
+      value,
+      data,
+      event,
+      api,
+    });
+  }, [onCellDoubleClick, api]);
+
+  // Cell selection handlers
+  const handleCellMouseDown = useCallback((rowIndex: number, colId: string, event: React.MouseEvent) => {
+    // Cell selection is always enabled for spreadsheet-like experience
+    const cellKey = `${rowIndex}:${colId}`;
+    const newPosition: CellPosition = { rowIndex, colId };
+    
+    if (event.shiftKey && cellSelection.anchorCell) {
+      // Range selection with shift
+      const newSelectedCells = new Set<string>();
+      const startRow = Math.min(cellSelection.anchorCell.rowIndex, rowIndex);
+      const endRow = Math.max(cellSelection.anchorCell.rowIndex, rowIndex);
+      
+      // Get column indices
+      const anchorColIdx = computedColumns.findIndex(c => c.id === cellSelection.anchorCell!.colId);
+      const currentColIdx = computedColumns.findIndex(c => c.id === colId);
+      const startColIdx = Math.min(anchorColIdx, currentColIdx);
+      const endColIdx = Math.max(anchorColIdx, currentColIdx);
+      
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = startColIdx; c <= endColIdx; c++) {
+          newSelectedCells.add(`${r}:${computedColumns[c].id}`);
+        }
+      }
+      
+      setCellSelection(prev => ({
+        ...prev,
+        selectedCells: newSelectedCells,
+        activeCell: newPosition,
+        isSelecting: true,
+      }));
+    } else if (event.ctrlKey || event.metaKey) {
+      // Toggle single cell with ctrl/cmd
+      setCellSelection(prev => {
+        const newSelectedCells = new Set(prev.selectedCells);
+        if (newSelectedCells.has(cellKey)) {
+          newSelectedCells.delete(cellKey);
+        } else {
+          newSelectedCells.add(cellKey);
+        }
+        return {
+          ...prev,
+          selectedCells: newSelectedCells,
+          activeCell: newPosition,
+          anchorCell: newPosition,
+          isSelecting: true,
+        };
+      });
+    } else {
+      // Single cell selection
+      setCellSelection({
+        selectedCells: new Set([cellKey]),
+        activeCell: newPosition,
+        anchorCell: newPosition,
+        isSelecting: true,
+      });
+    }
+  }, [cellSelection.anchorCell, computedColumns]);
+
+  const handleCellMouseEnter = useCallback((rowIndex: number, colId: string, _event: React.MouseEvent) => {
+    if (!cellSelection.isSelecting || !cellSelection.anchorCell) return;
+    
+    // Update range selection during drag
+    const newSelectedCells = new Set<string>();
+    const startRow = Math.min(cellSelection.anchorCell.rowIndex, rowIndex);
+    const endRow = Math.max(cellSelection.anchorCell.rowIndex, rowIndex);
+    
+    const anchorColIdx = computedColumns.findIndex(c => c.id === cellSelection.anchorCell!.colId);
+    const currentColIdx = computedColumns.findIndex(c => c.id === colId);
+    const startColIdx = Math.min(anchorColIdx, currentColIdx);
+    const endColIdx = Math.max(anchorColIdx, currentColIdx);
+    
+    for (let r = startRow; r <= endRow; r++) {
+      for (let c = startColIdx; c <= endColIdx; c++) {
+        newSelectedCells.add(`${r}:${computedColumns[c].id}`);
+      }
+    }
+    
+    setCellSelection(prev => ({
+      ...prev,
+      selectedCells: newSelectedCells,
+      activeCell: { rowIndex, colId },
+    }));
+  }, [cellSelection.isSelecting, cellSelection.anchorCell, computedColumns]);
+
+  // Global mouse up handler for ending selection
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (cellSelection.isSelecting) {
+        setCellSelection(prev => ({ ...prev, isSelecting: false }));
+      }
+    };
+    
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, [cellSelection.isSelecting]);
+
+  // Clipboard state for cut operation
+  const [clipboardData, setClipboardData] = useState<{
+    cells: Set<string>;
+    isCut: boolean;
+    data: Map<string, CellValue>;
+  } | null>(null);
+
+  // Get selected cells data for clipboard
+  const getSelectedCellsData = useCallback(() => {
+    if (cellSelection.selectedCells.size === 0) return '';
+    
+    // Parse selected cells to get row/col bounds
+    const cells = Array.from(cellSelection.selectedCells).map(key => {
+      const [row, col] = key.split(':');
+      return { row: parseInt(row), col };
+    });
+    
+    const minRow = Math.min(...cells.map(c => c.row));
+    const maxRow = Math.max(...cells.map(c => c.row));
+    const colIds = [...new Set(cells.map(c => c.col))];
+    
+    // Sort columns by their position
+    const sortedColIds = colIds.sort((a, b) => {
+      const aIdx = computedColumns.findIndex(c => c.id === a);
+      const bIdx = computedColumns.findIndex(c => c.id === b);
+      return aIdx - bIdx;
+    });
+    
+    // Build TSV data
+    const rows: string[] = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      const rowData = paginatedData[r];
+      if (!rowData) continue;
+      
+      const rowValues: string[] = [];
+      for (const colId of sortedColIds) {
+        const col = computedColumns.find(c => c.id === colId);
+        if (col?.field) {
+          const value = (rowData as Record<string, unknown>)[col.field as string];
+          rowValues.push(value != null ? String(value) : '');
+        } else {
+          rowValues.push('');
+        }
+      }
+      rows.push(rowValues.join('\t'));
+    }
+    
+    return rows.join('\n');
+  }, [cellSelection.selectedCells, computedColumns, paginatedData]);
+
+  // Keyboard handler for cell navigation and actions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if we have selected cells
+      if (cellSelection.selectedCells.size === 0 && !cellSelection.activeCell) return;
+      
+      const activeCell = cellSelection.activeCell;
+      if (!activeCell) return;
+      
+      const currentRowIdx = activeCell.rowIndex;
+      const currentColIdx = computedColumns.findIndex(c => c.id === activeCell.colId);
+      
+      // Ctrl/Cmd + C: Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        const data = getSelectedCellsData();
+        navigator.clipboard.writeText(data).then(() => {
+          // Store for internal paste
+          const cellData = new Map<string, CellValue>();
+          cellSelection.selectedCells.forEach(key => {
+            const [row, col] = key.split(':');
+            const rowData = paginatedData[parseInt(row)];
+            const column = computedColumns.find(c => c.id === col);
+            if (rowData && column?.field) {
+              cellData.set(key, (rowData as Record<string, unknown>)[column.field as string] as CellValue);
+            }
+          });
+          setClipboardData({
+            cells: new Set(cellSelection.selectedCells),
+            isCut: false,
+            data: cellData,
+          });
+        });
+        return;
+      }
+      
+      // Ctrl/Cmd + X: Cut
+      if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+        e.preventDefault();
+        const data = getSelectedCellsData();
+        navigator.clipboard.writeText(data).then(() => {
+          const cellData = new Map<string, CellValue>();
+          cellSelection.selectedCells.forEach(key => {
+            const [row, col] = key.split(':');
+            const rowData = paginatedData[parseInt(row)];
+            const column = computedColumns.find(c => c.id === col);
+            if (rowData && column?.field) {
+              cellData.set(key, (rowData as Record<string, unknown>)[column.field as string] as CellValue);
+            }
+          });
+          setClipboardData({
+            cells: new Set(cellSelection.selectedCells),
+            isCut: true,
+            data: cellData,
+          });
+        });
+        return;
+      }
+      
+      // Ctrl/Cmd + A: Select All
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        const allCells = new Set<string>();
+        for (let r = 0; r < paginatedData.length; r++) {
+          for (const col of computedColumns) {
+            allCells.add(`${r}:${col.id}`);
+          }
+        }
+        setCellSelection(prev => ({
+          ...prev,
+          selectedCells: allCells,
+          anchorCell: { rowIndex: 0, colId: computedColumns[0]?.id || '' },
+        }));
+        return;
+      }
+      
+      // Delete/Backspace: Clear cells (would need data mutation support)
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        // This would clear cell contents - needs data mutation API
+        console.log('Delete pressed - would clear', cellSelection.selectedCells.size, 'cells');
+        return;
+      }
+      
+      // Escape: Clear selection
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setCellSelection({
+          selectedCells: new Set(),
+          activeCell: null,
+          anchorCell: null,
+          isSelecting: false,
+        });
+        setClipboardData(null);
+        return;
+      }
+      
+      // Arrow key navigation
+      let newRowIdx = currentRowIdx;
+      let newColIdx = currentColIdx;
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          newRowIdx = Math.max(0, currentRowIdx - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          newColIdx = Math.max(0, currentColIdx - 1);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          newColIdx = Math.min(computedColumns.length - 1, currentColIdx + 1);
+          break;
+        case 'Tab':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Move left, or up and to last column
+            if (currentColIdx > 0) {
+              newColIdx = currentColIdx - 1;
+            } else if (currentRowIdx > 0) {
+              newRowIdx = currentRowIdx - 1;
+              newColIdx = computedColumns.length - 1;
+            }
+          } else {
+            // Move right, or down and to first column
+            if (currentColIdx < computedColumns.length - 1) {
+              newColIdx = currentColIdx + 1;
+            } else if (currentRowIdx < paginatedData.length - 1) {
+              newRowIdx = currentRowIdx + 1;
+              newColIdx = 0;
+            }
+          }
+          break;
+        case 'Enter':
+          e.preventDefault();
+          // Move down (or start editing in the future)
+          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) {
+            newRowIdx = 0;
+            newColIdx = 0;
+          } else {
+            newColIdx = 0;
+          }
+          break;
+        case 'End':
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) {
+            newRowIdx = paginatedData.length - 1;
+            newColIdx = computedColumns.length - 1;
+          } else {
+            newColIdx = computedColumns.length - 1;
+          }
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          newRowIdx = Math.max(0, currentRowIdx - 20);
+          break;
+        case 'PageDown':
+          e.preventDefault();
+          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 20);
+          break;
+        default:
+          return; // Don't update selection for other keys
+      }
+      
+      // Update selection
+      const newColId = computedColumns[newColIdx]?.id;
+      if (newColId) {
+        const newCellKey = `${newRowIdx}:${newColId}`;
+        const newPosition: CellPosition = { rowIndex: newRowIdx, colId: newColId };
+        
+        if (e.shiftKey && cellSelection.anchorCell) {
+          // Extend selection with shift
+          const newSelectedCells = new Set<string>();
+          const startRow = Math.min(cellSelection.anchorCell.rowIndex, newRowIdx);
+          const endRow = Math.max(cellSelection.anchorCell.rowIndex, newRowIdx);
+          const anchorColIdx = computedColumns.findIndex(c => c.id === cellSelection.anchorCell!.colId);
+          const startColIdx = Math.min(anchorColIdx, newColIdx);
+          const endColIdx = Math.max(anchorColIdx, newColIdx);
+          
+          for (let r = startRow; r <= endRow; r++) {
+            for (let c = startColIdx; c <= endColIdx; c++) {
+              newSelectedCells.add(`${r}:${computedColumns[c].id}`);
+            }
+          }
+          
+          setCellSelection(prev => ({
+            ...prev,
+            selectedCells: newSelectedCells,
+            activeCell: newPosition,
+          }));
+        } else {
+          // Single cell navigation
+          setCellSelection({
+            selectedCells: new Set([newCellKey]),
+            activeCell: newPosition,
+            anchorCell: newPosition,
+            isSelecting: false,
+          });
+        }
+        
+        // Scroll to new position if needed
+        scrollToIndex?.(newRowIdx);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [cellSelection, computedColumns, paginatedData, getSelectedCellsData, scrollToIndex]);
+
+  // Context menu handler
+  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    // Only show if contextMenu plugin is loaded
+    if (!pluginManagerRef.current?.isLoaded('contextMenu')) {
+      return;
+    }
+
+    event.preventDefault();
+    
+    // Get the cell that was right-clicked
+    const target = event.target as HTMLElement;
+    const cellElement = target.closest('.warper-grid-cell');
+    const rowElement = target.closest('.warper-grid-row');
+    
+    let rowIndex: number | null = null;
+    let colId: string | null = null;
+    let value: CellValue = null;
+    let rowData: TData | null = null;
+    
+    if (rowElement && cellElement) {
+      // Find rowIndex from the visible rows
+      const rowElements = Array.from(document.querySelectorAll('.warper-grid-row'));
+      const rowIdx = rowElements.indexOf(rowElement);
+      if (rowIdx >= 0 && range.items[rowIdx] !== undefined) {
+        rowIndex = range.items[rowIdx];
+        rowData = paginatedData[rowIndex] || null;
+      }
+      
+      // Find colId from cell position
+      const cellElements = Array.from(rowElement.querySelectorAll('.warper-grid-cell'));
+      const cellIdx = cellElements.indexOf(cellElement);
+      if (cellIdx >= 0 && computedColumns[cellIdx]) {
+        const col = computedColumns[cellIdx];
+        colId = col.id;
+        if (rowData && col.field) {
+          value = (rowData as Record<string, unknown>)[col.field as string] as CellValue;
+        }
+      }
+    }
+
+    // Store focused cell info
+    focusedCellRef.current = { rowIndex: rowIndex ?? -1, colId: colId ?? '', data: rowData };
+
+    setContextMenu({
+      isOpen: true,
+      x: event.clientX,
+      y: event.clientY,
+      rowIndex,
+      colId,
+      value,
+    });
+  }, [range.items, paginatedData, computedColumns]);
+
+  // Close context menu
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  // Emit sort changed event
+  useEffect(() => {
+    onSortChanged?.({
+      type: 'sortChanged',
+      sortModel: state.sortModel,
+      api,
+    });
+  }, [state.sortModel, onSortChanged, api]);
+
+  // Emit filter changed event
+  useEffect(() => {
+    onFilterChanged?.({
+      type: 'filterChanged',
+      filterModel: state.filterModel,
+      api,
+    });
+  }, [state.filterModel, onFilterChanged, api]);
+
+  // Emit selection changed event
+  useEffect(() => {
+    onSelectionChanged?.({
+      type: 'selectionChanged',
+      selectedRows: Array.from(state.selection.selectedRows).map(i => paginatedData[i]),
+      selectedIndices: Array.from(state.selection.selectedRows),
+      api,
+    });
+  }, [state.selection.selectedRows, paginatedData, onSelectionChanged, api]);
+
+  // Emit page changed event
+  useEffect(() => {
+    onPageChanged?.({
+      type: 'pageChanged',
+      page: state.page,
+      pageSize: state.pageSize,
+      api,
+    });
+  }, [state.page, state.pageSize, onPageChanged, api]);
+
+  // Grid ready callback
+  useEffect(() => {
+    onGridReady?.(api);
+  }, [api, onGridReady]);
+
+  // Handle loading state
+  if (loading || wasmLoading) {
+    return (
+      <div className={cn('warper-grid', className)} style={{ height, width, ...style }}>
+        <div className="warper-grid-loading">
+          {loadingComponent || 'Loading...'}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (wasmError) {
+    return (
+      <div className={cn('warper-grid', className)} style={{ height, width, ...style }}>
+        <div className="warper-grid-loading">
+          Error loading grid: {wasmError.message}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (paginatedData.length === 0) {
+    return (
+      <div className={cn('warper-grid', className)} style={{ height, width, ...style }}>
+        <GridHeader
+          columns={computedColumns}
+          totalWidth={totalWidth}
+          headerHeight={headerHeight}
+          api={api}
+        />
+        <div className="warper-grid-empty">
+          {emptyComponent || emptyMessage}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <GridProvider state={state} dispatch={dispatch as (action: GridAction<TData>) => void} scrollToIndex={scrollToIndex}>
+      <div
+        className={cn(
+          'warper-grid',
+          bordered && 'warper-grid--bordered',
+          compact && 'warper-grid--compact',
+          className
+        )}
+        style={{ height, width, ...style }}
+      >
+        {/* Grid Header */}
+        <GridHeader
+          columns={computedColumns}
+          totalWidth={totalWidth}
+          headerHeight={headerHeight}
+          api={api}
+        />
+
+        {/* Grid Body - Virtualized */}
+        <div
+          ref={scrollElementRef}
+          className="warper-grid-body"
+          style={{ flex: 1, overflow: 'auto' }}
+          onContextMenu={handleContextMenu}
+        >
+          <div
+            style={{
+              height: totalHeight,
+              width: totalWidth,
+              position: 'relative',
+            }}
+          >
+            {/* Viewport with paddingTop offset */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${range.paddingTop}px)`,
+                willChange: 'transform',
+              }}
+            >
+              {range.items.map((rowIndex, i) => {
+                const rowData = paginatedData[rowIndex];
+                if (!rowData) return null;
+
+                const rowId = getRowId ? getRowId(rowData, rowIndex) : rowIndex;
+
+                return (
+                  <GridRow
+                    key={rowId}
+                    rowIndex={rowIndex}
+                    rowData={rowData}
+                    rowId={rowId}
+                    columns={computedColumns}
+                    totalWidth={totalWidth}
+                    offset={range.offsets[i]}
+                    height={range.sizes[i]}
+                    isSelected={state.selection.selectedRows.has(rowIndex)}
+                    striped={striped}
+                    api={api}
+                    selectedCells={cellSelection.selectedCells}
+                    activeCell={cellSelection.activeCell}
+                    cutCells={clipboardData?.isCut ? clipboardData.cells : undefined}
+                    onRowClick={onRowClick ? handleRowClick : undefined}
+                    onCellClick={handleCellClick}
+                    onCellDoubleClick={onCellDoubleClick ? handleCellDoubleClick : undefined}
+                    onCellMouseDown={handleCellMouseDown}
+                    onCellMouseEnter={handleCellMouseEnter}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Grid Pagination */}
+        {pluginManagerRef.current!.isLoaded('pagination') && (
+          <GridPagination api={api} />
+        )}
+
+        {/* Status Bar */}
+        {pluginManagerRef.current!.isLoaded('statusBar') && (
+          <StatusBar
+            totalRows={state.data.length}
+            displayedRows={processedData.length}
+            selectedRows={state.selection.selectedRows.size}
+            selectedCells={cellSelection.selectedCells.size}
+          />
+        )}
+
+        {/* Context Menu */}
+        {contextMenu.isOpen && (
+          <ContextMenu
+            state={contextMenu}
+            api={api}
+            data={focusedCellRef.current.data}
+            onClose={handleCloseContextMenu}
+          />
+        )}
+      </div>
+    </GridProvider>
+  );
+}
+
+// Forward ref with generic support
+export const WarperGrid = forwardRef(WarperGridInner) as <TData extends RowData = RowData>(
+  props: WarperGridProps<TData> & { ref?: ForwardedRef<WarperGridRef<TData>> }
+) => ReturnType<typeof WarperGridInner>;
