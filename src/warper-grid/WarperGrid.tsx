@@ -11,6 +11,7 @@ import {
   type ForwardedRef,
   type ReactNode,
 } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { useVirtualizer } from '@itsmeadarsh/warper';
 import { cn } from '@/lib/utils';
 import {
@@ -399,24 +400,21 @@ function WarperGridInner<TData extends RowData>(
     return null;
   }, [state.columns, api]);
 
-  // Process data (filter, sort) - heavily optimized
-  const processedData = useMemo(() => {
-    // Skip processing if no filters/sorts
+
+  // Debounced filter/sort for 0% performance loss
+  const [processedData, setProcessedData] = useState(state.data);
+  const debouncedProcessData = useDebouncedCallback(() => {
     const hasFilters = state.filterModel.length > 0 || state.quickFilterText;
     const hasSorts = state.sortModel.length > 0;
-    
     if (!hasFilters && !hasSorts) {
-      return state.data;
+      setProcessedData(state.data);
+      return;
     }
-
     let result = state.data;
-
-    // Filter only if needed
     if (hasFilters) {
       const getRowValues = (row: TData): CellValue[] => {
         return state.columns.map(col => getColumnValue(row, col.id));
       };
-
       result = filterData(
         result,
         state.filterModel,
@@ -425,8 +423,6 @@ function WarperGridInner<TData extends RowData>(
         getRowValues
       );
     }
-
-    // Sort only if needed
     if (hasSorts) {
       result = sortData(
         result,
@@ -435,22 +431,46 @@ function WarperGridInner<TData extends RowData>(
         (colId) => state.columns.find(c => c.id === colId)?.comparator
       );
     }
+    setProcessedData(result);
+  }, 0, { maxWait: 16 }); // 0ms wait, but batch within a frame
 
-    return result;
+  useEffect(() => {
+    debouncedProcessData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue]);
 
-  // Update processed data in state (debounced)
-  useEffect(() => {
-    dispatch({ type: 'UPDATE_PROCESSED_DATA', payload: processedData });
-  }, [processedData]);
 
-  // Paginated data
+  // Sync processedData into grid state for plugins that read state.processedData
+  useEffect(() => {
+    const stateProcessed = state.processedData;
+    // Only dispatch when the processed data differs to avoid update loops
+    if (stateProcessed.length !== processedData.length || stateProcessed !== processedData) {
+      dispatch({ type: 'UPDATE_PROCESSED_DATA', payload: processedData });
+    }
+  }, [processedData, state.processedData, dispatch]);
+
+
+
+
+  // Intelligent rendering: use paginated data if pagination is enabled, else full data
+  const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
   const paginatedData = useMemo(() => {
-    if (!pluginManagerRef.current!.isLoaded('pagination')) {
+    if (!isPaginationEnabled) {
       return processedData;
     }
     return paginateData(processedData, state.page, state.pageSize);
-  }, [processedData, state.page, state.pageSize]);
+  }, [processedData, state.page, state.pageSize, isPaginationEnabled]);
+
+
+  // If 'All' is selected, treat as infinite scroll over the full dataset (use total rows)
+  const totalRowsCount = state.data.length;
+  const isAllRows = isPaginationEnabled && state.pageSize >= totalRowsCount;
+  // For non-all, virtualRows is the paginated slice; for all, we'll source directly from state.data
+  const virtualRows = paginatedData;
+  const virtualItemCount = isAllRows ? totalRowsCount : paginatedData.length;
+
+  // If 'All' is selected, hide pagination UI and always show all rows
+  const showPagination = isPaginationEnabled && !isAllRows;
 
   // Compute column widths (memoized)
   const computedColumns = useMemo((): ComputedColumn<TData>[] => {
@@ -479,6 +499,9 @@ function WarperGridInner<TData extends RowData>(
   [computedColumns]);
 
   // Setup virtualizer
+
+
+  // Virtualizer only allocates for visible rows (paginated or full)
   const {
     scrollElementRef,
     range,
@@ -487,7 +510,7 @@ function WarperGridInner<TData extends RowData>(
     error: wasmError,
     scrollToIndex,
   } = useVirtualizer({
-    itemCount: paginatedData.length,
+    itemCount: virtualItemCount,
     estimateSize: () => rowHeight,
     overscan,
   });
@@ -496,6 +519,28 @@ function WarperGridInner<TData extends RowData>(
   useEffect(() => {
     scrollToIndexRef.current = scrollToIndex;
   }, [scrollToIndex]);
+
+  // Keyboard shortcuts: Ctrl/Cmd + Shift + A to toggle All/Restore page size
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        const totalRowsCount = state.data.length;
+        const current = api.getPageSize();
+        const prev = api.getPreviousPageSize?.();
+        if (current === totalRowsCount) {
+          // Restore
+          if (prev) api.setPageSize(prev);
+        } else {
+          // Set All
+          api.setPageSize(totalRowsCount);
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [api, state.data.length]);
 
   // Event callbacks (stable references)
   const handleRowClick = useCallback((rowIndex: number, data: TData, event: React.MouseEvent) => {
@@ -1045,7 +1090,7 @@ function WarperGridInner<TData extends RowData>(
           compact && 'warper-grid--compact',
           className
         )}
-        style={{ height, width, ...style }}
+        style={{ height, width, display: 'flex', flexDirection: 'column', ...style }}
       >
         {/* Grid Header */}
         <GridHeader
@@ -1059,7 +1104,7 @@ function WarperGridInner<TData extends RowData>(
         <div
           ref={scrollElementRef}
           className="warper-grid-body"
-          style={{ flex: 1, overflow: 'auto' }}
+          style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
           onContextMenu={handleContextMenu}
         >
           <div
@@ -1080,23 +1125,29 @@ function WarperGridInner<TData extends RowData>(
                 willChange: 'transform',
               }}
             >
-              {range.items.map((rowIndex, i) => {
-                const rowData = paginatedData[rowIndex];
+              {range.items.map((virtualIdx, i) => {
+                // When 'All' is selected, source rows directly from the full dataset
+                const rowData = isAllRows ? state.data[virtualIdx] : virtualRows[virtualIdx];
                 if (!rowData) return null;
 
-                const rowId = getRowId ? getRowId(rowData, rowIndex) : rowIndex;
+                // Compute the global row index for selection, etc.
+                const globalRowIndex = isAllRows
+                  ? virtualIdx
+                  : (isPaginationEnabled ? state.page * state.pageSize + virtualIdx : virtualIdx);
+
+                const rowId = getRowId ? getRowId(rowData, globalRowIndex) : globalRowIndex;
 
                 return (
                   <GridRow
                     key={rowId}
-                    rowIndex={rowIndex}
+                    rowIndex={globalRowIndex}
                     rowData={rowData}
                     rowId={rowId}
                     columns={computedColumns}
                     totalWidth={totalWidth}
                     offset={range.offsets[i]}
                     height={range.sizes[i]}
-                    isSelected={state.selection.selectedRows.has(rowIndex)}
+                    isSelected={state.selection.allSelected ? true : state.selection.selectedRows.has(globalRowIndex)}
                     striped={striped}
                     api={api}
                     selectedCells={cellSelection.selectedCells}
@@ -1115,7 +1166,7 @@ function WarperGridInner<TData extends RowData>(
         </div>
 
         {/* Grid Pagination */}
-        {pluginManagerRef.current!.isLoaded('pagination') && (
+        {showPagination && (
           <GridPagination api={api} />
         )}
 

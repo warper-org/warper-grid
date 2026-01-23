@@ -13,6 +13,7 @@ import { paginationPlugin } from './plugins/pagination';
 import { selectionPlugin } from './plugins/selection';
 import { columnResizingPlugin } from './plugins/column-resizing';
 import { exportPlugin } from './plugins/export';
+import createColumnDraggingPlugin from './plugins/column-dragging';
 
 // ============================================================================
 // Plugin Registry
@@ -24,6 +25,7 @@ const builtInPlugins: Map<PluginName, () => GridPlugin<RowData>> = new Map([
   ['pagination', () => paginationPlugin],
   ['selection', () => selectionPlugin],
   ['columnResizing', () => columnResizingPlugin],
+  ['columnMoving', () => createColumnDraggingPlugin()],
   ['export', () => exportPlugin],
   // Advanced plugins (no implementation yet, registered for future use)
   ['contextMenu', () => createPlaceholderPlugin('contextMenu')],

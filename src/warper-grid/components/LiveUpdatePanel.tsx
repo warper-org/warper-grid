@@ -4,11 +4,7 @@ import {
   Play,
   Pause,
   RefreshCw,
-  TrendingUp,
-  TrendingDown,
-  Activity,
   Clock,
-  BarChart3,
   Settings,
 } from 'lucide-react';
 
@@ -28,8 +24,6 @@ export interface LiveUpdateConfig {
 }
 
 export interface PerformanceMetrics {
-  fps: number;
-  avgFps: number;
   updateTime: number;
   avgUpdateTime: number;
   totalUpdates: number;
@@ -38,54 +32,6 @@ export interface PerformanceMetrics {
 }
 
 // ============================================================================
-// FPS Counter Hook
-// ============================================================================
-
-function useFpsCounter() {
-  const [fps, setFps] = useState(0);
-  const [avgFps, setAvgFps] = useState(0);
-  const frameCount = useRef(0);
-  const lastTime = useRef(performance.now());
-  const fpsHistory = useRef<number[]>([]);
-  const rafId = useRef<number | null>(null);
-
-  useEffect(() => {
-    const measure = () => {
-      frameCount.current++;
-      const now = performance.now();
-      const elapsed = now - lastTime.current;
-
-      if (elapsed >= 1000) {
-        const currentFps = Math.round((frameCount.current * 1000) / elapsed);
-        setFps(currentFps);
-        
-        fpsHistory.current.push(currentFps);
-        if (fpsHistory.current.length > 30) {
-          fpsHistory.current.shift();
-        }
-        
-        const avg = fpsHistory.current.reduce((a, b) => a + b, 0) / fpsHistory.current.length;
-        setAvgFps(Math.round(avg));
-        
-        frameCount.current = 0;
-        lastTime.current = now;
-      }
-
-      rafId.current = requestAnimationFrame(measure);
-    };
-
-    rafId.current = requestAnimationFrame(measure);
-
-    return () => {
-      if (rafId.current !== null) {
-        cancelAnimationFrame(rafId.current);
-      }
-    };
-  }, []);
-
-  return { fps, avgFps };
-}
-
 // ============================================================================
 // Performance Monitor Props
 // ============================================================================
@@ -122,18 +68,6 @@ export const PerformanceMonitor = memo(function PerformanceMonitor({
     setShowSettings(false);
   }, [config, interval, rowsPerTick, onConfigChange]);
   
-  const getFpsColor = (fps: number) => {
-    if (fps >= 55) return 'text-emerald-600 dark:text-emerald-400';
-    if (fps >= 30) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
-  };
-  
-  const getFpsBgColor = (fps: number) => {
-    if (fps >= 55) return 'bg-emerald-500';
-    if (fps >= 30) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-  
   if (compact) {
     return (
       <div className={cn('flex items-center gap-2', className)}>
@@ -158,13 +92,6 @@ export const PerformanceMonitor = memo(function PerformanceMonitor({
             </>
           )}
         </button>
-        
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-(--muted)/50 rounded-lg">
-          <Activity className={cn('w-4 h-4', getFpsColor(metrics.fps))} />
-          <span className={cn('font-mono text-sm font-medium', getFpsColor(metrics.fps))}>
-            {metrics.fps} FPS
-          </span>
-        </div>
       </div>
     );
   }
@@ -172,117 +99,40 @@ export const PerformanceMonitor = memo(function PerformanceMonitor({
   return (
     <div className={cn('relative', className)}>
       <div className="p-4 bg-(--card) border border-(--border) rounded-xl">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-(--foreground)">Live Performance</h3>
-              <p className="text-xs text-(--muted-foreground)">Real-time metrics</p>
+              <h3 className="font-semibold text-(--foreground)">Live Updates</h3>
+              <p className="text-xs text-(--muted-foreground)">Real-time data updates</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 hover:bg-(--accent) rounded-lg transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={onToggle}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all',
-                isLiveUpdating
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              )}
-            >
-              {isLiveUpdating ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Stop Updates
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Start Live Updates
-                </>
-              )}
-            </button>
-          </div>
+
+          <button
+            onClick={onToggle}
+            className={cn(
+              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all',
+              isLiveUpdating
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            )}
+          >
+            {isLiveUpdating ? (
+              <>
+                <Pause className="w-4 h-4" />
+                Stop Updates
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                Start Live Updates
+              </>
+            )}
+          </button>
         </div>
-        
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* FPS */}
-          <div className="p-3 bg-(--muted)/30 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-(--muted-foreground)">Current FPS</span>
-              {metrics.fps > metrics.avgFps ? (
-                <TrendingUp className="w-3 h-3 text-emerald-500" />
-              ) : (
-                <TrendingDown className="w-3 h-3 text-red-500" />
-              )}
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className={cn('text-2xl font-bold font-mono', getFpsColor(metrics.fps))}>
-                {metrics.fps}
-              </span>
-              <span className="text-xs text-(--muted-foreground)">fps</span>
-            </div>
-            <div className="mt-2 h-1.5 bg-(--muted) rounded-full overflow-hidden">
-              <div
-                className={cn('h-full transition-all duration-300', getFpsBgColor(metrics.fps))}
-                style={{ width: `${Math.min(100, (metrics.fps / 120) * 100)}%` }}
-              />
-            </div>
-          </div>
-          
-          {/* Avg FPS */}
-          <div className="p-3 bg-(--muted)/30 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-(--muted-foreground)">Avg FPS (30s)</span>
-              <BarChart3 className="w-3 h-3 text-(--muted-foreground)" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className={cn('text-2xl font-bold font-mono', getFpsColor(metrics.avgFps))}>
-                {metrics.avgFps}
-              </span>
-              <span className="text-xs text-(--muted-foreground)">fps</span>
-            </div>
-          </div>
-          
-          {/* Update Time */}
-          <div className="p-3 bg-(--muted)/30 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-(--muted-foreground)">Update Time</span>
-              <Clock className="w-3 h-3 text-(--muted-foreground)" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold font-mono text-(--foreground)">
-                {metrics.updateTime.toFixed(1)}
-              </span>
-              <span className="text-xs text-(--muted-foreground)">ms</span>
-            </div>
-          </div>
-          
-          {/* Total Updates */}
-          <div className="p-3 bg-(--muted)/30 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-(--muted-foreground)">Rows Updated</span>
-              <RefreshCw className={cn('w-3 h-3', isLiveUpdating && 'animate-spin text-blue-500')} />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold font-mono text-(--foreground)">
-                {metrics.rowsUpdated.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-        
+
         {/* Live indicator */}
         {isLiveUpdating && (
           <div className="mt-3 flex items-center gap-2 text-sm">
@@ -292,64 +142,13 @@ export const PerformanceMonitor = memo(function PerformanceMonitor({
             </span>
             <span className="text-emerald-600 dark:text-emerald-400 font-medium">
               Live updating every {config.interval ?? 1000}ms ({config.rowsPerTick ?? 10} rows/tick)
+              <span className="ml-2 text-xs opacity-75">
+                • {metrics.rowsUpdated} rows updated • {metrics.totalUpdates} total updates
+              </span>
             </span>
           </div>
         )}
       </div>
-      
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-(--card) border border-(--border) rounded-xl shadow-xl z-10">
-          <h4 className="font-medium text-(--foreground) mb-3">Update Settings</h4>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-(--muted-foreground) mb-1 block">
-                Update Interval: {interval}ms
-              </label>
-              <input
-                type="range"
-                min="100"
-                max="5000"
-                step="100"
-                value={interval}
-                onChange={(e) => setInterval(Number(e.target.value))}
-                className="w-full accent-emerald-500"
-              />
-              <div className="flex justify-between text-xs text-(--muted-foreground) mt-1">
-                <span>100ms (fast)</span>
-                <span>5000ms (slow)</span>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm text-(--muted-foreground) mb-1 block">
-                Rows per Tick: {rowsPerTick}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="100"
-                step="1"
-                value={rowsPerTick}
-                onChange={(e) => setRowsPerTick(Number(e.target.value))}
-                className="w-full accent-emerald-500"
-              />
-              <div className="flex justify-between text-xs text-(--muted-foreground) mt-1">
-                <span>1 row</span>
-                <span>100 rows</span>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleApplySettings}
-              className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-            >
-              Apply Settings
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 });
@@ -375,15 +174,11 @@ export function useLiveUpdate<TData>({
 }: UseLiveUpdateOptions<TData>) {
   const [isLiveUpdating, setIsLiveUpdating] = useState(false);
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
-    fps: 0,
-    avgFps: 0,
     updateTime: 0,
     avgUpdateTime: 0,
     totalUpdates: 0,
     rowsUpdated: 0,
   });
-  
-  const { fps, avgFps } = useFpsCounter();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const updateTimesRef = useRef<number[]>([]);
   const totalRowsUpdatedRef = useRef(0);
@@ -395,11 +190,6 @@ export function useLiveUpdate<TData>({
     configRef.current = config;
   }, [config]);
   
-  // Update FPS in metrics
-  useEffect(() => {
-    setMetrics(prev => ({ ...prev, fps, avgFps }));
-  }, [fps, avgFps]);
-  
   // Default update function - updates numeric fields with random variance
   const defaultUpdateFn = useCallback((row: TData, _index: number): TData => {
     const updated = { ...row } as Record<string, unknown>;
@@ -408,8 +198,15 @@ export function useLiveUpdate<TData>({
     for (const field of fields) {
       if (field in updated && typeof updated[field] === 'number') {
         const currentValue = updated[field] as number;
-        const variance = currentValue * 0.02; // 2% variance
-        updated[field] = currentValue + (Math.random() - 0.5) * variance;
+        // Increased variance from 2% to 10% for more visible changes
+        const variance = currentValue * 0.10; // 10% variance
+        const newValue = Math.max(0, currentValue + (Math.random() - 0.5) * variance);
+        updated[field] = newValue;
+        
+        // Debug logging (remove in production)
+        if (_index < 3) { // Only log first few updates to avoid spam
+          console.log(`Updated row ${_index} ${field}: ${currentValue.toFixed(2)} → ${newValue.toFixed(2)}`);
+        }
       }
     }
     
@@ -423,36 +220,30 @@ export function useLiveUpdate<TData>({
     const updater = updateFn ?? defaultUpdateFn;
     
     setData(prevData => {
+      if (!Array.isArray(prevData)) return [];
       const newData = [...prevData];
       const dataLength = newData.length;
-      
       if (dataLength === 0) return newData;
-      
       const rowsToUpdate = Math.min(rowsPerTick, dataLength);
-      
       if (mode === 'random') {
-        // Update random rows
         for (let i = 0; i < rowsToUpdate; i++) {
           const idx = Math.floor(Math.random() * dataLength);
           newData[idx] = updater(newData[idx], idx);
         }
       } else if (mode === 'sequential') {
-        // Update sequential rows
         const startIdx = totalUpdatesRef.current % dataLength;
         for (let i = 0; i < rowsToUpdate; i++) {
           const idx = (startIdx + i) % dataLength;
           newData[idx] = updater(newData[idx], idx);
         }
       } else if (mode === 'batch') {
-        // Update a batch starting from random position
         const startIdx = Math.floor(Math.random() * dataLength);
         for (let i = 0; i < rowsToUpdate; i++) {
           const idx = (startIdx + i) % dataLength;
           newData[idx] = updater(newData[idx], idx);
         }
       }
-      
-      return newData;
+      return Array.isArray(newData) ? newData : [];
     });
     
     const updateTime = performance.now() - start;

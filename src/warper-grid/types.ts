@@ -235,6 +235,8 @@ export interface SelectionState {
   selectedRows: Set<number>;
   selectedCells: Set<string>; // Format: "rowIndex:colId"
   anchorCell: { rowIndex: number; colId: string } | null;
+  /** Marker that all rows are selected without materializing the index set */
+  allSelected?: boolean;
 }
 
 /** Column state */
@@ -267,6 +269,8 @@ export interface GridState<TData extends RowData = RowData> {
   page: number;
   /** Page size */
   pageSize: number;
+  /** Previous non-'All' page size (useful when toggling 'All') */
+  previousPageSize?: number;
   /** Is loading */
   isLoading: boolean;
   /** Quick filter text */
@@ -296,6 +300,7 @@ export interface GridApi<TData extends RowData = RowData> {
   setColumnPinned: (colId: string, pinned: ColumnPin) => void;
   autoSizeColumn: (colId: string) => void;
   autoSizeAllColumns: () => void;
+  moveColumn: (fromIdx: number, toIdx: number, animation?: boolean) => void;
   
   // Sorting
   getSortModel: () => SortModel[];
@@ -319,6 +324,8 @@ export interface GridApi<TData extends RowData = RowData> {
   setPage: (page: number) => void;
   getPageSize: () => number;
   setPageSize: (pageSize: number) => void;
+  /** Get the last non-'All' page size (if available) */
+  getPreviousPageSize: () => number | undefined;
   getTotalPages: () => number;
   nextPage: () => void;
   previousPage: () => void;

@@ -11,6 +11,7 @@ import type {
 } from '../plugins/status-bar';
 import { formatStatNumber } from '../plugins/status-bar';
 import type { CellRange } from '../plugins/cell-selection';
+import { LARGE_DATASET_THRESHOLD } from '../constants';
 
 // ============================================================================
 // Status Bar Props
@@ -46,6 +47,9 @@ function TotalRowsPanel<TData extends RowData>({
           <span className="warper-status-label">Showing:</span>
           <span className="warper-status-value">{displayedRows.toLocaleString()}</span>
         </>
+      )}
+      {totalRows > LARGE_DATASET_THRESHOLD && (
+        <span className="warper-status-warning"> • Large dataset mode</span>
       )}
     </div>
   );

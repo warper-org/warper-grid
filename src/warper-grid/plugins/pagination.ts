@@ -12,11 +12,14 @@ import type {
 /**
  * Get paginated data
  */
+
 export function paginateData<TData>(
   data: TData[],
   page: number,
   pageSize: number
 ): TData[] {
+  // If 'All' is selected (pageSize >= data.length), return all rows
+  if (pageSize >= data.length) return data;
   const start = page * pageSize;
   const end = start + pageSize;
   return data.slice(start, end);
@@ -133,10 +136,14 @@ export const paginationPlugin: GridPlugin<RowData> = {
 // ============================================================================
 
 export function usePagination<TData extends RowData>(api: GridApi<TData>) {
-  const totalRows = api.getDisplayedRowCount();
+  const displayedRows = api.getDisplayedRowCount();
+  const totalRows = api.getRowCount();
   const page = api.getPage();
   const pageSize = api.getPageSize();
-  const info = getPaginationInfo(totalRows, page, pageSize);
+
+  // If 'All' (pageSize equals total rows) use totalRows for pagination calculations
+  const totalRowsForInfo = pageSize >= totalRows ? totalRows : displayedRows;
+  const info = getPaginationInfo(totalRowsForInfo, page, pageSize);
   
   return {
     ...info,

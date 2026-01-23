@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown, MoreVertical, Filter } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, MoreVertical, Filter, Grip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useColumnResizing, getResizerProps } from '../plugins/column-resizing';
 import { ColumnMenu } from './ColumnMenu';
@@ -95,18 +95,32 @@ export function GridHeader<TData extends RowData>({
                 isSortable && 'warper-grid-header-cell--sortable',
                 sortDirection && 'warper-grid-header-cell--sorted'
               )}
+              draggable={false}
               style={{
                 width: col.computedWidth,
                 minWidth: col.minWidth,
                 maxWidth: col.maxWidth,
                 position: 'relative',
                 textAlign: col.headerAlign || col.align || 'left',
+                display: 'flex',
+                alignItems: 'center',
                 ...(typeof col.headerStyle === 'function'
                   ? col.headerStyle({ column: col, columnIndex: index, api })
                   : col.headerStyle),
               }}
               onClick={() => isSortable && handleSort(col.id)}
             >
+              {/* Drag Handle */}
+              <span
+                className="drag-handle mr-1 shrink-0 cursor-grab hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5"
+                title="Drag to move column"
+                tabIndex={0}
+                role="button"
+                aria-label="Drag to move column"
+                style={{ WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'none' }}
+              >
+                <Grip className="h-4 w-4 pointer-events-none" />
+              </span>
               {/* Header Content */}
               <span className="flex-1 truncate">
                 {col.headerRenderer && typeof col.headerRenderer === 'function' ? (
@@ -125,7 +139,7 @@ export function GridHeader<TData extends RowData>({
 
               {/* Sort Indicator */}
               {isSortable && (
-                <span className="ml-1 flex-shrink-0">
+                <span className="ml-1 shrink-0">
                   {sortDirection === 'asc' ? (
                     <ArrowUp className="h-4 w-4" />
                   ) : sortDirection === 'desc' ? (
@@ -138,7 +152,7 @@ export function GridHeader<TData extends RowData>({
 
               {/* Column Menu Button */}
               <button
-                className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                 onClick={(e) => handleOpenColumnMenu(e, col.id)}
                 title="Column menu"
               >
@@ -147,7 +161,7 @@ export function GridHeader<TData extends RowData>({
 
               {/* Filter Indicator */}
               {col.filterable && (
-                <span className="ml-1 flex-shrink-0 opacity-50">
+                <span className="ml-1 shrink-0 opacity-50">
                   <Filter className="h-3 w-3" />
                 </span>
               )}

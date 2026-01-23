@@ -30,6 +30,7 @@ const GridContext = createContext<GridContextValue<RowData> | null>(null);
 export type GridAction<TData extends RowData = RowData> =
   | { type: 'SET_DATA'; payload: TData[] }
   | { type: 'SET_COLUMNS'; payload: ColumnDef<TData>[] }
+  | { type: 'MOVE_COLUMN'; payload: { fromIdx: number; toIdx: number } }
   | { type: 'SET_SORT_MODEL'; payload: SortModel[] }
   | { type: 'SET_FILTER_MODEL'; payload: FilterModel[] }
   | { type: 'SET_QUICK_FILTER'; payload: string }
@@ -57,9 +58,18 @@ export function gridReducer<TData extends RowData>(
   switch (action.type) {
     case 'SET_DATA':
       return { ...state, data: action.payload };
-    
+
     case 'SET_COLUMNS':
       return { ...state, columns: action.payload };
+
+    case 'MOVE_COLUMN': {
+      const { fromIdx, toIdx } = action.payload;
+      if (fromIdx === toIdx) return state;
+      const columns = [...state.columns];
+      const [moved] = columns.splice(fromIdx, 1);
+      columns.splice(toIdx, 0, moved);
+      return { ...state, columns };
+    }
     
     case 'SET_SORT_MODEL':
       return { ...state, sortModel: action.payload };
@@ -73,8 +83,12 @@ export function gridReducer<TData extends RowData>(
     case 'SET_PAGE':
       return { ...state, page: action.payload };
     
-    case 'SET_PAGE_SIZE':
-      return { ...state, pageSize: action.payload, page: 0 };
+    case 'SET_PAGE_SIZE': {
+      const totalRows = state.data.length;
+      // If setting to 'All' (pageSize >= totalRows), store the previous pageSize
+      const prev = action.payload >= totalRows ? state.pageSize : action.payload;
+      return { ...state, pageSize: action.payload, page: 0, previousPageSize: prev };
+    }
     
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
@@ -120,22 +134,32 @@ export function gridReducer<TData extends RowData>(
     }
     
     case 'SELECT_ALL': {
+      // If dataset is huge, avoid materializing all indices in memory — use marker
+      const total = state.processedData.length;
+      const LARGE_THRESHOLD = 100_000; // fallback local threshold
+      if (total > LARGE_THRESHOLD) {
+        return {
+          ...state,
+          selection: { ...state.selection, selectedRows: new Set(), allSelected: true },
+        };
+      }
+
       const allIndices = new Set(state.processedData.map((_, i) => i));
       return {
         ...state,
-        selection: { ...state.selection, selectedRows: allIndices },
+        selection: { ...state.selection, selectedRows: allIndices, allSelected: false },
       };
     }
     
     case 'DESELECT_ALL':
       return {
         ...state,
-        selection: { ...state.selection, selectedRows: new Set(), selectedCells: new Set() },
+        selection: { ...state.selection, selectedRows: new Set(), selectedCells: new Set(), allSelected: false },
       };
     
     case 'SET_SELECTION':
       return { ...state, selection: action.payload };
-    
+
     case 'UPDATE_PROCESSED_DATA':
       return { ...state, processedData: action.payload };
     
@@ -166,6 +190,7 @@ export function createInitialState<TData extends RowData>(
     },
     page: 0,
     pageSize: 100,
+    previousPageSize: 100,
     isLoading: false,
     quickFilterText: '',
   };
@@ -183,6 +208,18 @@ export function createGridApi<TData extends RowData>(
   const getState = () => stateRef.current;
   
   return {
+    // Column reordering
+    moveColumn: (fromIdx: number, toIdx: number, animation?: boolean) => {
+      dispatch({ type: 'MOVE_COLUMN', payload: { fromIdx, toIdx } });
+      // Animation: add a class to header row for transition
+      if (animation) {
+        const headerRow = document.querySelector('.warper-grid-header-row');
+        if (headerRow) {
+          headerRow.classList.add('column-moving');
+          setTimeout(() => headerRow.classList.remove('column-moving'), 300);
+        }
+      }
+    },
     // Data operations
     getData: () => getState().data,
     
@@ -255,11 +292,16 @@ export function createGridApi<TData extends RowData>(
     // Selection
     getSelectedRows: () => {
       const state = getState();
+      if (state.selection.allSelected) return state.processedData;
       return Array.from(state.selection.selectedRows).map(i => state.processedData[i]);
     },
-    
-    getSelectedRowIndices: () => Array.from(getState().selection.selectedRows),
-    
+
+    getSelectedRowIndices: () => {
+      const state = getState();
+      if (state.selection.allSelected) return Array.from({ length: state.processedData.length }, (_, i) => i);
+      return Array.from(state.selection.selectedRows);
+    },
+
     selectRow: (rowIndex: number, clearOthers = false) => {
       dispatch({ type: 'SELECT_ROW', payload: { rowIndex, clearOthers } });
     },
@@ -288,6 +330,8 @@ export function createGridApi<TData extends RowData>(
     setPageSize: (pageSize: number) => {
       dispatch({ type: 'SET_PAGE_SIZE', payload: pageSize });
     },
+
+    getPreviousPageSize: () => getState().previousPageSize,
     
     getTotalPages: () => {
       const state = getState();

@@ -13,9 +13,22 @@ interface GridPaginationProps<TData extends RowData> {
 
 export function GridPagination<TData extends RowData>({
   api,
-  pageSizes = [10, 25, 50, 100, 500],
+  pageSizes = [10, 25, 50, 100, 500, 1000, 5000, 10000, 100000],
 }: GridPaginationProps<TData>) {
   const pagination = usePagination(api);
+  // Use actual total row count (pre-filter) for "All" option
+  const totalRows = api.getRowCount();
+  const displayedRows = api.getDisplayedRowCount();
+
+  // Adapt page sizes to dataset size and current selection
+  let availableSizes = pageSizes.filter(size => size < totalRows);
+  if (!availableSizes.includes(pagination.pageSize)) availableSizes.push(pagination.pageSize);
+  if (!availableSizes.includes(totalRows)) availableSizes.push(totalRows);
+  // Include previous custom page size if present
+  const prevSize = api.getPreviousPageSize?.();
+  if (prevSize && !availableSizes.includes(prevSize) && prevSize <= totalRows) availableSizes.push(prevSize);
+  // Remove any 0 or negative, dedupe, and sort
+  availableSizes = Array.from(new Set(availableSizes)).filter(x => x > 0 && x <= totalRows).sort((a, b) => a - b);
 
   return (
     <div className="warper-grid-pagination">
@@ -30,15 +43,27 @@ export function GridPagination<TData extends RowData>({
         <div className="flex items-center gap-2">
           <span className="text-sm text-[var(--muted-foreground)]">Rows per page:</span>
           <select
-            value={pagination.pageSize}
-            onChange={(e) => pagination.setPageSize(Number(e.target.value))}
+            value={pagination.pageSize === totalRows ? 'All' : pagination.pageSize}
+            onChange={e => {
+              const val = e.target.value;
+              if (val === 'restore') {
+                const prev = api.getPreviousPageSize?.();
+                if (prev) pagination.setPageSize(prev);
+                return;
+              }
+              const value = val === 'All' ? totalRows : Number(val);
+              pagination.setPageSize(value);
+            }}
             className="h-8 px-2 text-sm border border-[var(--border)] rounded bg-[var(--background)] text-[var(--foreground)]"
           >
-            {pageSizes.map((size) => (
-              <option key={size} value={size}>
-                {size}
+            {availableSizes.map((size) => (
+              <option key={size} value={size === totalRows ? 'All' : size}>
+                {size === totalRows ? 'All' : size}
               </option>
             ))}
+            {prevSize && pagination.pageSize === totalRows && prevSize !== totalRows && (
+              <option value="restore">Restore ({prevSize})</option>
+            )}
           </select>
         </div>
 

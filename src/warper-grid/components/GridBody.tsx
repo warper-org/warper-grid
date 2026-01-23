@@ -38,6 +38,9 @@ export function GridBody<TData extends RowData>({
   onCellClick,
   onCellDoubleClick,
 }: GridBodyProps<TData>) {
+  // Detect global all-selected marker
+  const selectedRowsAll = api.getState().selection.allSelected ?? false;
+
   return (
     <div
       style={{
@@ -50,7 +53,7 @@ export function GridBody<TData extends RowData>({
         const rowData = data[rowIndex];
         if (!rowData) return null;
 
-        const isSelected = selectedRows.has(rowIndex);
+        const isSelected = selectedRowsAll ? true : selectedRows.has(rowIndex);
         const rowId = getRowId ? getRowId(rowData, rowIndex) : rowIndex;
 
         return (

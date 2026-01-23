@@ -1,3 +1,6 @@
+.warper-grid-header-row.column-moving .warper-grid-header-cell {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 @import "tailwindcss";
 
 /* ===== shadcn/ui Emerald Theme Variables ===== */
@@ -140,6 +143,11 @@
   .warper-grid-header-cell {
     @apply flex items-center px-3 py-2 text-sm font-semibold text-[var(--foreground)] select-none;
     @apply border-r border-[var(--border)] last:border-r-0;
+    cursor: grab;
+  }
+
+  .warper-grid-header-cell.dragging {
+    cursor: grabbing;
   }
 
   .warper-grid-header-cell--sortable {

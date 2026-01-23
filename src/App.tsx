@@ -1,16 +1,17 @@
-import { useRef, useMemo, useCallback, useState, useEffect, memo } from 'react';
-import { WarperGrid, type WarperGridRef, type ColumnDef } from './warper-grid';
-import { SqlQueryPanel } from './warper-grid/components/SqlQueryPanel';
-import { PerformanceMonitor, useLiveUpdate, type LiveUpdateConfig } from './warper-grid/components/LiveUpdatePanel';
-import { createSqlDatabaseManager, type SqlDatabaseManager } from './warper-grid/plugins/sql-query';
-import { 
   Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, 
   Copy, Clipboard, Edit3, Filter, ArrowUpDown, Columns3,
   FileSpreadsheet, CheckSquare, Grid3X3,
   Zap, ExternalLink, Github, Sparkles, LayoutGrid,
   Download, RefreshCw, ArrowUp, ArrowDown, Search,
   Database, Play, Pause
-} from 'lucide-react';
+import { useRef, useMemo, useCallback, useState, useEffect, memo } from 'react';
+import { useRef as useDebounceRef } from 'react';
+import { WarperGrid, type WarperGridRef, type ColumnDef } from './warper-grid';
+import { cn } from './lib/utils';
+import { SqlQueryPanel } from './warper-grid/components/SqlQueryPanel';
+import { useLiveUpdate, type LiveUpdateConfig } from './warper-grid/components/LiveUpdatePanel';
+import { createSqlDatabaseManager, type SqlDatabaseManager } from './warper-grid/plugins/sql-query';
+import { Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, Copy, Clipboard, Edit3, Filter, ArrowUpDown, Columns3, FileSpreadsheet, CheckSquare, Grid3X3, Zap, ExternalLink, Github, Sparkles, LayoutGrid, Download, RefreshCw, ArrowUp, ArrowDown, Search, Database, Play, Pause } from 'lucide-react';
 
 // ============================================================================
 // Demo Data Types
@@ -37,7 +38,6 @@ interface Person {
 const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen', 'Emma', 'Olivia', 'Ava', 'Isabella', 'Sophia', 'Mia', 'Charlotte', 'Amelia', 'Harper', 'Evelyn'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson'];
 const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Finance', 'Operations', 'Legal', 'Support', 'Product', 'Design', 'R&D', 'Quality'];
-
 let seed = 12345;
 function seededRandom() {
   seed = (seed * 16807) % 2147483647;
@@ -121,6 +121,7 @@ const PerformanceBar = memo(function PerformanceBar({ value }: { value: number }
 // Tooltip Component
 // ============================================================================
 
+import { createPortal } from 'react-dom';
 const Tooltip = memo(function Tooltip({ 
   children, 
   content,
@@ -131,33 +132,50 @@ const Tooltip = memo(function Tooltip({
   position?: 'top' | 'bottom' | 'left' | 'right';
 }) {
   const [show, setShow] = useState(false);
-  
-  const positionClasses: Record<string, string> = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  const [coords, setCoords] = useState<{top: number, left: number, width: number, height: number} | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    setShow(true);
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  };
+  const handleMouseLeave = () => setShow(false);
+
+  const getTooltipStyle = () => {
+    if (!coords) return {};
+    switch (position) {
+      case 'top':
+        return { left: coords.left + coords.width / 2, top: coords.top - 8, transform: 'translateX(-50%)', position: 'fixed' };
+      case 'bottom':
+        return { left: coords.left + coords.width / 2, top: coords.top + coords.height + 8, transform: 'translateX(-50%)', position: 'fixed' };
+      case 'left':
+        return { left: coords.left - 8, top: coords.top + coords.height / 2, transform: 'translateY(-50%)', position: 'fixed' };
+      case 'right':
+        return { left: coords.left + coords.width + 8, top: coords.top + coords.height / 2, transform: 'translateY(-50%)', position: 'fixed' };
+      default:
+        return {};
+    }
   };
 
-  const arrowClasses: Record<string, string> = {
-    top: 'top-full left-1/2 -translate-x-1/2 -mt-1',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 -mb-1',
-    left: 'left-full top-1/2 -translate-y-1/2 -ml-1',
-    right: 'right-full top-1/2 -translate-y-1/2 -mr-1',
-  };
-  
   return (
-    <div 
-      className="relative inline-flex"
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
+    <div ref={ref} className="relative inline-flex" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
-      {show && (
-        <div className={'absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none ' + positionClasses[position]}>
+      {show && coords && createPortal(
+        <div
+          className="z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg whitespace-nowrap pointer-events-none"
+          style={getTooltipStyle() as React.CSSProperties}
+        >
           {content}
-          <div className={'absolute w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45 ' + arrowClasses[position]} />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -320,6 +338,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <FeatureCard icon={<Grid3X3 className="w-5 h-5" />} title="Cell Selection" description="Select individual cells or ranges with mouse drag and keyboard." tip="Click and drag" shortcut="Shift+Click" />
               <FeatureCard icon={<Clipboard className="w-5 h-5" />} title="Clipboard" description="Copy, cut, and paste cells with Excel-compatible format." tip="Works with Excel" shortcut="Ctrl+C/V" />
               <FeatureCard icon={<Columns3 className="w-5 h-5" />} title="Column Menu" description="Pin, hide, auto-size columns from the column header menu." tip="Click the ⋮ icon" />
+              <FeatureCard icon={<ArrowUpDown className="w-5 h-5" />} title="Column Dragging" description="Reorder columns by dragging the column headers. Animated transitions included." tip="Click and drag a column header. Cursor changes to grab when hovering." shortcut="Drag header" />
               <FeatureCard icon={<Edit3 className="w-5 h-5" />} title="Cell Editing" description="Edit cells inline with undo/redo support and validation." tip="Double-click to edit" shortcut="Enter / F2" />
               <FeatureCard icon={<ArrowUpDown className="w-5 h-5" />} title="Sorting" description="Sort by one or multiple columns with visual indicators." tip="Click column header" shortcut="Shift+Click" />
               <FeatureCard icon={<Filter className="w-5 h-5" />} title="Filtering" description="Filter data with text, number, and date conditions." tip="Use filter icon" />
@@ -430,22 +449,22 @@ interface StatsDisplayProps {
 
 const StatsDisplay = memo(function StatsDisplay({ totalRows, renderTime }: StatsDisplayProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4 text-sm">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-        <LayoutGrid className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+    <div className="flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md">
+        <LayoutGrid className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
         <span className="text-(--foreground) font-medium">{totalRows.toLocaleString()} rows</span>
       </div>
       
       {renderTime && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-(--foreground) font-medium">{renderTime}ms render</span>
+        <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+          <Zap className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+          <span className="text-(--foreground) font-medium">{renderTime}ms</span>
         </div>
       )}
       
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-(--foreground) font-medium">WASM Virtualized</span>
+      <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
+        <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+        <span className="text-(--foreground) font-medium">WASM</span>
       </div>
     </div>
   );
@@ -492,6 +511,7 @@ const FeatureTipsBanner = memo(function FeatureTipsBanner() {
     { icon: <Edit3 className="w-4 h-4" />, text: '💡 Double-click a cell to start editing' },
     { icon: <Keyboard className="w-4 h-4" />, text: '💡 Press Ctrl+C to copy, Ctrl+V to paste' },
     { icon: <ArrowUpDown className="w-4 h-4" />, text: '💡 Click column headers to sort, Shift+Click for multi-sort' },
+    { icon: <Keyboard className="w-4 h-4" />, text: '💡 Use Ctrl/Cmd+Shift+A to toggle All/Restore rows per page' },
   ];
   
   useEffect(() => {
@@ -543,6 +563,10 @@ function App() {
     return result;
   });
   
+  // Track updated cells for highlight (batched via ref)
+  const [updatedCells, setUpdatedCells] = useState<{ [key: string]: number }>({});
+  const updatedCellsRef = useRef<{ [key: string]: number }>({});
+
   // Define columns first (needed by SQL sync)
   const columns = useMemo<ColumnDef<Person>[]>(() => [
     { id: 'id', field: 'id', headerName: 'ID', width: 80, sortable: true, align: 'right', pinned: 'left' },
@@ -570,9 +594,16 @@ function App() {
     return createSqlDatabaseManager<Person>({ tableName: 'employees', maxRows: 50000 });
   }, []);
 
-  // Sync SQL database when data changes
+  // Debounced SQL sync to avoid infinite update loop
+  const debounceRef = useDebounceRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    sqlManager.syncData(data, columns);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      sqlManager.syncData(data, columns);
+    }, 500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [data, sqlManager, columns]);
 
   // Live update hook
@@ -583,9 +614,47 @@ function App() {
     setConfig: setLiveConfig,
   } = useLiveUpdate({
     data,
-    setData,
+    setData: (updater) => {
+      setData(prev => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        // Find changed cells and mark for highlight (batched via ref)
+        const now = Date.now();
+        for (let i = 0; i < prev.length; i++) {
+          for (const col of columns) {
+            const key = `${i}:${col.id}`;
+            if (prev[i][col.id] !== next[i][col.id]) {
+              updatedCellsRef.current[key] = now;
+            }
+          }
+        }
+        return next;
+      });
+    },
     config: liveUpdateConfig,
   });
+
+  // Throttle updatedCells state update from ref
+  useEffect(() => {
+    if (!isLiveUpdating) return;
+    const interval = setInterval(() => {
+      setUpdatedCells((old) => {
+        // Only update if changed
+        const refKeys = Object.keys(updatedCellsRef.current);
+        const oldKeys = Object.keys(old);
+        if (refKeys.length === 0 && oldKeys.length === 0) return old;
+        if (refKeys.length === oldKeys.length && refKeys.every(k => old[k] === updatedCellsRef.current[k])) return old;
+        // Remove highlights older than 1s
+        const now = Date.now();
+        const filtered: { [key: string]: number } = {};
+        for (const k in updatedCellsRef.current) {
+          if (now - updatedCellsRef.current[k] < 1000) filtered[k] = updatedCellsRef.current[k];
+        }
+        updatedCellsRef.current = filtered;
+        return filtered;
+      });
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isLiveUpdating]);
 
   const handleGridReady = useCallback(() => {
     if (gridRef.current) {
@@ -598,8 +667,8 @@ function App() {
         cellSelection: { enableRangeSelection: true, enableFillHandle: true },
         clipboard: { copyHeadersToClipboard: true },
         cellEditing: { editType: 'singleCell', undoRedoCellEditing: true },
-        contextMenu: { enabled: true },
-        statusBar: { enabled: true },
+        contextMenu: {},
+        statusBar: {},
       });
     }
   }, []);
@@ -636,160 +705,174 @@ function App() {
         onClose={() => setShowSqlPanel(false)}
       />
       
-      <div className="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
-        <header className="mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg shadow-emerald-500/20">
-                <Grid3X3 className="w-8 h-8 text-white" />
+      <div className="w-full mx-auto p-4 md:p-6 lg:p-8">
+        <header className="mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+                <Grid3X3 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-(--foreground) flex items-center gap-2">
+                <h1 className="text-xl font-bold text-(--foreground) flex items-center gap-2">
                   WarperGrid
                   <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full">DEMO</span>
                 </h1>
-                <p className="text-sm md:text-base text-(--muted-foreground)">High-performance React data grid powered by Warper WASM virtualization</p>
+                <p className="text-xs text-(--muted-foreground)">High-performance data grid with WASM virtualization</p>
               </div>
             </div>
             
             <div className="flex items-center gap-2">
               <Tooltip content="View on GitHub">
-                <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="h-10 w-10 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-                  <Github className="w-5 h-5" />
+                <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                  <Github className="w-4 h-4" />
                 </a>
               </Tooltip>
               
               <Tooltip content={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
-                <button onClick={() => setIsDark(!isDark)} className="h-10 w-10 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors" aria-label="Toggle dark mode">
-                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <button onClick={() => setIsDark(!isDark)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors" aria-label="Toggle dark mode">
+                  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
               </Tooltip>
             </div>
           </div>
-          
-          <FeatureTipsBanner />
         </header>
 
-        {/* Performance Monitor - Live Updates */}
-        <div className="mb-4">
-          <PerformanceMonitor
-            isLiveUpdating={isLiveUpdating}
-            metrics={metrics}
-            onToggle={toggleLiveUpdate}
-            onConfigChange={(newConfig) => {
-              setLiveUpdateConfig(prev => ({ ...prev, ...newConfig }));
-              setLiveConfig(newConfig);
-            }}
-            config={liveUpdateConfig}
-          />
-        </div>
+        {/* Compact Grid with Integrated Controls */}
+        <div className="border border-(--border) rounded-xl overflow-hidden shadow-xl shadow-black/5 bg-(--card)">
+          {/* Integrated Grid Header with All Controls */}
+          <div className="border-b border-(--border) bg-(--background)/50 backdrop-blur-sm">
+            <div className="p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Left Section: Live Updates & Row Count */}
+                <div className="flex items-center gap-3">
+                  {/* Compact Live Updates */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={toggleLiveUpdate}
+                      className={cn(
+                        'flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md transition-all',
+                        isLiveUpdating
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                      )}
+                    >
+                      {isLiveUpdating ? (
+                        <>
+                          <Pause className="w-3 h-3" />
+                          Stop
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3 h-3" />
+                          Live
+                        </>
+                      )}
+                    </button>
 
-        <div className="mb-4 p-4 bg-(--card) border border-(--border) rounded-xl">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-(--muted-foreground) whitespace-nowrap">Rows:</label>
-                <select value={rowCount} onChange={(e) => handleRowCountChange(Number(e.target.value))} disabled={isGenerating || isLiveUpdating} className="h-9 px-3 border border-(--border) rounded-lg bg-(--background) text-(--foreground) font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all disabled:opacity-50">
-                  <option value={1000}>1K</option>
-                  <option value={10000}>10K</option>
-                  <option value={100000}>100K</option>
-                  <option value={500000}>500K</option>
-                  <option value={1000000}>1M</option>
-                  <option value={5000000}>5M</option>
-                  <option value={10000000}>10M</option>
-                </select>
-                {isGenerating && (
-                  <div className="flex items-center gap-2 text-sm text-(--muted-foreground)">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Generating...
+                    {isLiveUpdating && (
+                      <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        <span>{metrics.rowsUpdated} updates</span>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Row Count Selector */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-(--muted-foreground)">Rows:</label>
+                    <select
+                      value={rowCount}
+                      onChange={(e) => handleRowCountChange(Number(e.target.value))}
+                      disabled={isGenerating || isLiveUpdating}
+                      className="h-7 px-2 text-xs border border-(--border) rounded bg-(--background) text-(--foreground) focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    >
+                      <option value={1000}>1K</option>
+                      <option value={10000}>10K</option>
+                      <option value={100000}>100K</option>
+                      <option value={500000}>500K</option>
+                      <option value={1000000}>1M</option>
+                      <option value={5000000}>5M</option>
+                      <option value={10000000}>10M</option>
+                    </select>
+                    {isGenerating && (
+                      <RefreshCw className="w-3 h-3 animate-spin text-(--muted-foreground)" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Center Section: Search */}
+                <div className="flex-1 max-w-sm">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-(--muted-foreground)" />
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={quickFilter}
+                      onChange={(e) => { setQuickFilter(e.target.value); gridRef.current?.api.setQuickFilter(e.target.value); }}
+                      className="w-full h-7 pl-6 pr-2 text-xs border border-(--border) rounded bg-(--background) text-(--foreground) placeholder:text-(--muted-foreground) focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Right Section: Actions */}
+                <div className="flex items-center gap-1">
+                  {/* Quick Actions */}
+                  <Tooltip content="Scroll to top">
+                    <button onClick={() => gridRef.current?.api.scrollToRow(0)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+
+                  <Tooltip content="Scroll to bottom">
+                    <button onClick={() => gridRef.current?.api.scrollToRow(data.length - 1)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+
+                  <Tooltip content="Refresh data">
+                    <button onClick={() => gridRef.current?.api.refreshCells()} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+
+                  <div className="w-px h-4 bg-(--border) mx-1" />
+
+                  {/* SQL Query */}
+                  <Tooltip content="SQL Query Console">
+                    <button onClick={() => setShowSqlPanel(true)} className="h-7 px-2 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">
+                      <Database className="w-3 h-3" />
+                      SQL
+                    </button>
+                  </Tooltip>
+
+                  {/* Export */}
+                  <Tooltip content="Export to CSV">
+                    <button onClick={() => gridRef.current?.api.exportToCsv({ fileName: 'employees.csv' })} className="h-7 px-2 flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-medium transition-colors">
+                      <Download className="w-3 h-3" />
+                      CSV
+                    </button>
+                  </Tooltip>
+
+                  {/* Help */}
+                  <Tooltip content="Help & Shortcuts">
+                    <button onClick={() => setShowHelp(true)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                      <HelpCircle className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
-              
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--muted-foreground)" />
-                <input type="text" placeholder="Quick filter..." value={quickFilter} onChange={(e) => { setQuickFilter(e.target.value); gridRef.current?.api.setQuickFilter(e.target.value); }} className="w-full h-9 pl-9 pr-3 border border-(--border) rounded-lg bg-(--background) text-(--foreground) placeholder:text-(--muted-foreground) focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all" />
-              </div>
-            </div>
-            
-            <div className="flex-1 flex flex-wrap justify-end gap-2">
-              {/* SQL Query Button */}
-              <Tooltip content="Open SQL Query Console">
-                <button onClick={() => setShowSqlPanel(true)} className="h-9 px-3 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                  <Database className="w-4 h-4" />
-                  <span className="hidden sm:inline">SQL Query</span>
-                </button>
-              </Tooltip>
-              
-              <QuickActions gridRef={gridRef} dataLength={data.length} onHelp={() => setShowHelp(true)} />
             </div>
           </div>
-        </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Tooltip content="SQL Query - Query data with SQL" position="bottom">
-            <button onClick={() => setShowSqlPanel(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-pointer hover:border-blue-500/50 transition-colors">
-              <Database className="w-4 h-4 text-blue-500" />
-              <span>SQL Query</span>
-            </button>
-          </Tooltip>
-          
-          <Tooltip content="Live Updates - Real-time data changes" position="bottom">
-            <button onClick={toggleLiveUpdate} className={'flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border rounded-lg text-sm cursor-pointer transition-colors ' + (isLiveUpdating ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-(--border) hover:border-emerald-500/50')}>
-              {isLiveUpdating ? <Pause className="w-4 h-4 text-emerald-500" /> : <Play className="w-4 h-4 text-emerald-500" />}
-              <span>{isLiveUpdating ? 'Live' : 'Start Live'}</span>
-            </button>
-          </Tooltip>
-        
-          <Tooltip content="Context Menu - Right-click on cells" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-emerald-500/50 transition-colors">
-              <MousePointer2 className="w-4 h-4 text-emerald-500" />
-              <span>Right-click</span>
-            </div>
-          </Tooltip>
-          
-          <Tooltip content="Cell Selection - Click and drag" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-blue-500/50 transition-colors">
-              <Grid3X3 className="w-4 h-4 text-blue-500" />
-              <span>Click+Drag</span>
-            </div>
-          </Tooltip>
-          
-          <Tooltip content="Cell Editing - Double-click to edit" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-purple-500/50 transition-colors">
-              <Edit3 className="w-4 h-4 text-purple-500" />
-              <span>Double-click</span>
-            </div>
-          </Tooltip>
-          
-          <Tooltip content="Sorting - Click column headers" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-orange-500/50 transition-colors">
-              <ArrowUpDown className="w-4 h-4 text-orange-500" />
-              <span>Click Header</span>
-            </div>
-          </Tooltip>
-          
-          <Tooltip content="Copy/Paste - Ctrl+C / Ctrl+V" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-cyan-500/50 transition-colors">
-              <Copy className="w-4 h-4 text-cyan-500" />
-              <span>Ctrl+C/V</span>
-            </div>
-          </Tooltip>
-          
-          <Tooltip content="Column Menu - Click ⋮ in headers" position="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-(--card) border border-(--border) rounded-lg text-sm cursor-help hover:border-pink-500/50 transition-colors">
-              <Columns3 className="w-4 h-4 text-pink-500" />
-              <span>Column Menu</span>
-            </div>
-          </Tooltip>
-        </div>
-
-        <div className="border border-(--border) rounded-xl overflow-hidden shadow-xl shadow-black/5 bg-(--card)">
+          {/* Grid Content */}
           <WarperGrid
             ref={gridRef}
             data={data}
             columns={columns}
-            height={Math.min(600, typeof window !== 'undefined' ? window.innerHeight - 450 : 600)}
+            height={Math.min(650, typeof window !== 'undefined' ? window.innerHeight - 300 : 650)}
             rowHeight={40}
             headerHeight={44}
             overscan={5}
@@ -799,15 +882,22 @@ function App() {
             onRowClick={(event: { rowIndex: number; data: Person }) => console.log('Row clicked:', event.rowIndex, event.data)}
             onSortChanged={(event: { sortModel: unknown }) => console.log('Sort changed:', event.sortModel)}
             onCellDoubleClick={(event: { colId: string }) => console.log('Cell double-clicked:', event.colId, 'Editing enabled')}
+            cellStyle={({ rowIndex, column }) => {
+              const key = `${rowIndex}:${column.id}`;
+              if (typeof updatedCells !== 'undefined' && updatedCells[key]) {
+                return { color: '#eab308', fontWeight: 700, background: 'rgba(234,179,8,0.08)' };
+              }
+              return {};
+            }}
           />
         </div>
 
-        <footer className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <footer className="mt-3 flex items-center justify-between">
           <StatsDisplay totalRows={data.length} renderTime={renderTime} />
           
-          <div className="flex items-center gap-4 text-sm text-(--muted-foreground)">
+          <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">
             <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-              <Github className="w-4 h-4" />
+              <Github className="w-3 h-3" />
               <span>GitHub</span>
               <ExternalLink className="w-3 h-3" />
             </a>
@@ -815,15 +905,6 @@ function App() {
             <span>Powered by <strong className="text-emerald-600 dark:text-emerald-400">Warper WASM</strong></span>
           </div>
         </footer>
-
-        <div className="fixed bottom-4 right-4 hidden lg:block">
-          <Tooltip content="View keyboard shortcuts and help" position="left">
-            <button onClick={() => setShowHelp(true)} className="flex items-center gap-2 px-4 py-2 bg-(--card) border border-(--border) rounded-full shadow-lg hover:shadow-xl hover:border-emerald-500/50 transition-all">
-              <Keyboard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-sm font-medium">Press ? for help</span>
-            </button>
-          </Tooltip>
-        </div>
       </div>
     </div>
   );

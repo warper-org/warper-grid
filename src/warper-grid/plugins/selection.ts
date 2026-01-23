@@ -110,6 +110,7 @@ export function handleCellSelection(
  * Check if a row is selected
  */
 export function isRowSelected(selection: SelectionState, rowIndex: number): boolean {
+  if (selection.allSelected) return true;
   return selection.selectedRows.has(rowIndex);
 }
 
@@ -179,9 +180,9 @@ export function useSelection<TData extends RowData>(
 
   const isSelected = (rowIndex: number) => isRowSelected(selection, rowIndex);
 
-  const selectedCount = selection.selectedRows.size;
+  const selectedCount = selection.allSelected ? api.getDisplayedRowCount() : selection.selectedRows.size;
   
-  const allSelected = selectedCount > 0 && selectedCount === api.getDisplayedRowCount();
+  const allSelected = selection.allSelected || (selectedCount > 0 && selectedCount === api.getDisplayedRowCount());
   
   const someSelected = selectedCount > 0 && !allSelected;
 
