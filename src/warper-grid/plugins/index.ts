@@ -12,7 +12,7 @@ export * from './column-menu';
 export * from './cell-selection';
 export * from './clipboard';
 export * from './cell-editing';
-export * from './row-grouping';
+
 export * from './master-detail';
 export * from './status-bar';
 export * from './sql-query';

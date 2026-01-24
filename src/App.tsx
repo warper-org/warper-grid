@@ -44,7 +44,7 @@ function generateData(count: number): Person[] {
   const data: Person[] = new Array(count);
   const now = Date.now();
   const fiveYears = 5 * 365 * 24 * 60 * 60 * 1000;
-  
+
   for (let i = 0; i < count; i++) {
     const firstName = firstNames[Math.floor(seededRandom() * firstNames.length)];
     const lastName = lastNames[Math.floor(seededRandom() * lastNames.length)];
@@ -98,11 +98,11 @@ const PerformanceBar = memo(function PerformanceBar({ value }: { value: number }
     if (value >= 40) return 'bg-yellow-500';
     return 'bg-red-500';
   };
-  
+
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-        <div 
+        <div
           className={'h-full transition-all duration-300 ' + getColor()}
           style={{ width: value + '%' }}
         />
@@ -117,17 +117,17 @@ const PerformanceBar = memo(function PerformanceBar({ value }: { value: number }
 // ============================================================================
 
 import { createPortal } from 'react-dom';
-const Tooltip = memo(function Tooltip({ 
-  children, 
+const Tooltip = memo(function Tooltip({
+  children,
   content,
   position = 'top'
-}: { 
-  children: React.ReactNode; 
+}: {
+  children: React.ReactNode;
   content: string;
   position?: 'top' | 'bottom' | 'left' | 'right';
 }) {
   const [show, setShow] = useState(false);
-  const [coords, setCoords] = useState<{top: number, left: number, width: number, height: number} | null>(null);
+  const [coords, setCoords] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const handleMouseEnter = () => {
@@ -225,7 +225,7 @@ interface HelpModalProps {
 
 const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const [activeTab, setActiveTab] = useState<'features' | 'shortcuts' | 'tips'>('features');
-  
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -239,9 +239,9 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
-  
+
   if (!isOpen) return null;
-  
+
   const shortcuts = [
     { keys: 'Click + Drag', action: 'Select range of cells' },
     { keys: 'Shift + Click', action: 'Extend selection' },
@@ -268,7 +268,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
     { keys: 'Page Up', action: 'Scroll up one page' },
     { keys: 'Page Down', action: 'Scroll down one page' },
   ];
-  
+
   const tips = [
     { icon: <MousePointer2 className="w-4 h-4" />, tip: 'Right-click any cell to access the context menu with copy, cut, paste, and export options.' },
     { icon: <Grid3X3 className="w-4 h-4" />, tip: 'Click and drag across cells to select a range. Use Shift+Click to extend your selection.' },
@@ -287,11 +287,11 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: <Keyboard className="w-4 h-4" /> },
     { id: 'tips', label: 'Pro Tips', icon: <Sparkles className="w-4 h-4" /> },
   ];
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      
+
       <div className="relative w-full max-w-3xl max-h-[85vh] bg-(--background) border border-(--border) rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-(--border)">
           <div className="flex items-center gap-3">
@@ -307,7 +307,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="flex border-b border-(--border)">
           {tabConfig.map((tab) => (
             <button
@@ -325,7 +325,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
             </button>
           ))}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'features' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -342,7 +342,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
               <FeatureCard icon={<Zap className="w-5 h-5" />} title="WASM Performance" description="Handle 10M+ rows at 120 FPS with Warper virtualization." tip="Try 10M rows!" />
             </div>
           )}
-          
+
           {activeTab === 'shortcuts' && (
             <div className="grid grid-cols-2 gap-x-8 gap-y-1">
               {shortcuts.map((shortcut, index) => (
@@ -355,7 +355,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
               ))}
             </div>
           )}
-          
+
           {activeTab === 'tips' && (
             <div className="space-y-3">
               {tips.map((item, index) => (
@@ -369,7 +369,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
             </div>
           )}
         </div>
-        
+
         <div className="p-4 border-t border-(--border) bg-(--accent)/30">
           <p className="text-center text-sm text-(--muted-foreground)">
             Press <kbd className="px-1.5 py-0.5 mx-1 text-xs font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">Esc</kbd> to close
@@ -398,14 +398,14 @@ const StatsDisplay = memo(function StatsDisplay({ totalRows, renderTime }: Stats
         <LayoutGrid className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
         <span className="text-(--foreground) font-medium">{totalRows.toLocaleString()} rows</span>
       </div>
-      
+
       {renderTime && (
         <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
           <Zap className="w-3 h-3 text-blue-600 dark:text-blue-400" />
           <span className="text-(--foreground) font-medium">{renderTime}ms</span>
         </div>
       )}
-      
+
       <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
         <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
         <span className="text-(--foreground) font-medium">WASM</span>
@@ -452,6 +452,7 @@ function App() {
   const [rowCount, setRowCount] = useState(10000); // Start with 10K for better performance
   const [isDark, setIsDark] = useDarkMode();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true); // Loading state for SQL sync
   const [showHelp, setShowHelp] = useState(false);
   const [showSqlPanel, setShowSqlPanel] = useState(false);
   const [renderTime, setRenderTime] = useState<number>();
@@ -462,14 +463,18 @@ function App() {
     mode: 'random',
     updateFields: ['salary', 'performance'],
   });
-  
-  const [data, setData] = useState<Person[]>(() => {
+
+  const [groupBy, setGroupBy] = useState<string[]>([]);
+  const [rawData, setRawData] = useState<Person[]>(() => {
     const start = performance.now();
     const result = generateData(rowCount);
     console.log(`Initial data generation: ${(performance.now() - start).toFixed(2)}ms`);
     return result;
   });
-  
+  // State for SQL results
+  const [data, setData] = useState<any[]>([]);
+  const [sqlColumns, setSqlColumns] = useState<string[]>([]);
+
   // Track updated cells for highlight (batched via ref)
   const [updatedCells, setUpdatedCells] = useState<{ [key: string]: number }>({});
   const updatedCellsRef = useRef<{ [key: string]: number }>({});
@@ -487,13 +492,14 @@ function App() {
     { id: 'performance', field: 'performance', headerName: 'Performance', width: 150, sortable: true, cellRenderer: ({ value }) => <PerformanceBar value={value as number} /> },
     { id: 'isActive', field: 'isActive', headerName: 'Status', width: 100, sortable: true, cellRenderer: ({ value }) => <StatusBadge value={value as boolean} /> },
   ], []);
-  
+
   // Regenerate data when rowCount changes
+
   useEffect(() => {
     const start = performance.now();
     const newData = generateData(rowCount);
     setRenderTime(Math.round(performance.now() - start));
-    setData(newData);
+    setRawData(newData);
   }, [rowCount]);
 
   // SQL Database Manager
@@ -501,17 +507,46 @@ function App() {
     return createSqlDatabaseManager<Person>({ tableName: 'employees', maxRows: 50000 });
   }, []);
 
-  // Debounced SQL sync to avoid infinite update loop
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  // Sync rawData to SQL and execute query
+  const executeQuery = useCallback(async () => {
+    let result;
+    if (!groupBy.length) {
+      result = await sqlManager.executeQuery(`SELECT * FROM employees LIMIT 1000`);
+    } else {
+      const groupCols = groupBy.map(col => `"${col}"`).join(', ');
+      result = await sqlManager.executeQuery(`SELECT ${groupCols}, COUNT(*) as count, AVG(salary) as avg_salary FROM employees GROUP BY ${groupCols} LIMIT 1000`);
+    }
+    if (result) {
+      setSqlColumns(result.columns);
+      const rows = result.values.map(row => {
+        const obj: any = {};
+        result.columns.forEach((col, i) => { obj[col] = row[i]; });
+        return obj;
+      });
+      setData(rows);
+      // Debug: log SQL result
+      console.log('SQL Query Result:', rows);
+    }
+  }, [groupBy, sqlManager]);
+
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      sqlManager.syncData(data, columns);
-    }, 500);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+    const sync = async () => {
+      setIsLoadingData(true);
+      try {
+        await sqlManager.syncData(rawData, columns);
+        await executeQuery();
+      } finally {
+        setIsLoadingData(false);
+      }
     };
-  }, [data, sqlManager, columns]);
+    // Run sync immediately when rawData changes (no delay)
+    sync();
+  }, [rawData, sqlManager, columns, executeQuery]);
+
+  // When groupBy changes, re-execute query
+  useEffect(() => {
+    executeQuery();
+  }, [groupBy, executeQuery]);
 
   // Live update hook
   const {
@@ -579,8 +614,11 @@ function App() {
   const [canRedo, setCanRedo] = useState(false);
   const undoSubRef = useRef<(() => void) | undefined>(undefined);
 
+  const [gridApi, setGridApi] = useState<any>(null);
+
   const handleGridReady = useCallback(() => {
-    if (gridRef.current) {
+    if (gridRef.current && gridRef.current.api !== gridApi) {
+      setGridApi(gridRef.current.api);
       // Attach default plugins with sensible configs
       gridRef.current.attach(defaultPlugins, {
         pagination: { pageSize: 100, pageSizes: [50, 100, 500, 1000] },
@@ -615,7 +653,7 @@ function App() {
       setCanUndo(!!gridRef.current.api.canUndo?.());
       setCanRedo(!!gridRef.current.api.canRedo?.());
     }
-  }, []);
+  }, [gridApi]);
 
   // Cleanup subscription on unmount
   useEffect(() => {
@@ -691,7 +729,7 @@ function App() {
         isOpen={showSqlPanel}
         onClose={() => setShowSqlPanel(false)}
       />
-      
+
       <div className="w-full mx-auto p-4 md:p-6 lg:p-8">
         <header className="mb-4">
           <div className="flex items-center justify-between">
@@ -707,14 +745,14 @@ function App() {
                 <p className="text-xs text-(--muted-foreground)">High-performance data grid with WASM virtualization</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Tooltip content="View on GitHub">
                 <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
                   <Github className="w-4 h-4" />
                 </a>
               </Tooltip>
-              
+
               <Tooltip content={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
                 <button onClick={() => setIsDark(!isDark)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors" aria-label="Toggle dark mode">
                   {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -831,7 +869,7 @@ function App() {
                     >
                       <CornerUpLeft className="w-3 h-3" />
                     </button>
-                  </Tooltip> 
+                  </Tooltip>
 
                   <Tooltip content="Redo (Ctrl+Y)">
                     <button
@@ -974,36 +1012,54 @@ function App() {
           </div>
 
           {/* Group Panel (drag columns here) */}
-          {pluginsEnabled.rowGrouping && <div className="px-3 py-2 border-b border-(--border) bg-(--background)/30"><GroupPanel api={gridRef.current?.api} /></div>}
+          {pluginsEnabled.rowGrouping && (
+            <div className="px-3 py-2 border-b border-(--border) bg-(--background)/30">
+              <GroupPanel groupBy={groupBy} setGroupBy={setGroupBy} />
+            </div>
+          )}
 
           {/* Grid Content */}
-          <WarperGrid
-            ref={gridRef}
-            data={data}
-            columns={columns}
-            height={Math.min(650, typeof window !== 'undefined' ? window.innerHeight - 300 : 650)}
-            rowHeight={40}
-            headerHeight={44}
-            overscan={5}
-            striped
-            onGridReady={handleGridReady}
-            onCellClick={(event: { colId: string; value: unknown }) => console.log('Cell clicked:', event.colId, event.value)}
-            onRowClick={(event: { rowIndex: number; data: Person }) => console.log('Row clicked:', event.rowIndex, event.data)}
-            onSortChanged={(event: { sortModel: unknown }) => console.log('Sort changed:', event.sortModel)}
-            onCellDoubleClick={(event: { colId: string }) => console.log('Cell double-clicked:', event.colId, 'Editing enabled')}
-            cellStyle={({ rowIndex, column }) => {
-              const key = `${rowIndex}:${column.id}`;
-              if (typeof updatedCells !== 'undefined' && updatedCells[key]) {
-                return { color: '#eab308', fontWeight: 700, background: 'rgba(234,179,8,0.08)' };
-              }
-              return {};
-            }}
-          />
+          {/* Dynamically build columns from SQL result if grouping, else use default columns */}
+          {isLoadingData ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 dark:text-emerald-400 mb-3" />
+              <div className="text-lg text-(--foreground)">Loading data...</div>
+              <div className="text-xs text-(--muted-foreground) mt-1">Initializing SQL database</div>
+            </div>
+          ) : data.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-lg text-red-500">
+              <div>No data returned from SQL query.</div>
+              <div className="text-xs text-gray-400 mt-2">Check the SQL query, data sync, or open the browser console for details.</div>
+            </div>
+          ) : (
+            <WarperGrid
+              ref={gridRef}
+              data={data}
+              columns={groupBy.length ? sqlColumns.map(col => ({ id: col, field: col, headerName: col, width: 130 })) : columns}
+              height={Math.min(650, typeof window !== 'undefined' ? window.innerHeight - 300 : 650)}
+              rowHeight={40}
+              headerHeight={44}
+              overscan={5}
+              striped
+              onGridReady={handleGridReady}
+              onCellClick={(event: { colId: string; value: unknown }) => console.log('Cell clicked:', event.colId, event.value)}
+              onRowClick={(event: { rowIndex: number; data: Person }) => console.log('Row clicked:', event.rowIndex, event.data)}
+              onSortChanged={(event: { sortModel: unknown }) => console.log('Sort changed:', event.sortModel)}
+              onCellDoubleClick={(event: { colId: string }) => console.log('Cell double-clicked:', event.colId, 'Editing enabled')}
+              cellStyle={({ rowIndex, column }) => {
+                const key = `${rowIndex}:${column.id}`;
+                if (typeof updatedCells !== 'undefined' && updatedCells[key]) {
+                  return { color: '#eab308', fontWeight: 700, background: 'rgba(234,179,8,0.08)' };
+                }
+                return {};
+              }}
+            />
+          )}
         </div>
 
         <footer className="mt-3 flex items-center justify-between">
           <StatsDisplay totalRows={data.length} renderTime={renderTime} />
-          
+
           <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">
             <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
               <Github className="w-3 h-3" />

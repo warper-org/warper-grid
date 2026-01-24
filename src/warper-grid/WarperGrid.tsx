@@ -30,6 +30,7 @@ import { GridPagination } from './components/GridPagination';
 import { ContextMenu } from './components/ContextMenu';
 import { StatusBar } from './components/StatusBar';
 import { PluginManager } from './plugin-manager';
+import { AccordionItem } from './components/ui/Accordion';
 import type {
   RowData,
   WarperGridProps,
@@ -207,6 +208,7 @@ interface GridRowProps<TData extends RowData> {
   globalCellStyle?: WarperGridProps<TData>['cellStyle'];
 }
 
+
 function GridRowInner<TData extends RowData>({
   rowIndex,
   rowData,
@@ -227,72 +229,7 @@ function GridRowInner<TData extends RowData>({
   onCellMouseEnter,
   globalCellStyle,
 }: GridRowProps<TData>) {
-  // Render group rows differently, AG Grid style: put label in first visible column and show aggregations in other columns
-  if ((rowData as any).__isGroupRow) {
-    const g = rowData as any;
-    // choose label column as first non-hidden column
-    const labelColIndex = columns.findIndex(c => !c.hide);
-
-    return (
-      <div
-        className={cn('warper-grid-row warper-grid-group-row', striped && 'warper-grid-row--striped')}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          transform: `translateY(${offset}px)`,
-          height,
-          width: totalWidth,
-          display: 'flex',
-        }}
-        onClick={(e) => { if (onRowClick) onRowClick(rowIndex, rowData as any, e); }}
-      >
-        {columns.map((col, colIndex) => {
-          const isLabel = colIndex === labelColIndex;
-          const indent = isLabel ? Math.min(20 * (g.depth || 0), 320) : 0;
-
-          return (
-            <div
-              key={col.id}
-              className={cn('warper-grid-cell warper-grid-group-cell')}
-              style={{
-                width: col.computedWidth,
-                minWidth: col.minWidth,
-                maxWidth: col.maxWidth,
-                display: 'flex',
-                alignItems: 'center',
-                paddingLeft: isLabel ? 12 : 8,
-                textAlign: col.align || 'left',
-              }}
-              onClick={(e) => {
-                if (isLabel) {
-                  e.stopPropagation();
-                  if (api.toggleGroupExpand) api.toggleGroupExpand(g.path);
-                }
-              }}
-            >
-              {isLabel ? (
-                <div className="flex items-center gap-2 w-full">
-                  <div style={{ marginLeft: indent }} className="cursor-pointer select-none">
-                    {g.isExpanded ? '▾' : '▸'}
-                  </div>
-                  <div className="truncate">
-                    <strong className="mr-1">{g.groupColId}:</strong>
-                    {String(g.groupKey)} <span className="text-xs text-(--muted-foreground)">({g.leafCount})</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="ml-auto">
-                  {g.aggregations && g.aggregations[col.id] != null ? String(g.aggregations[col.id]) : ''}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
+  // All rows are now flat SQL results. Render as normal rows.
   return (
     <div
       className={cn(
@@ -316,7 +253,6 @@ function GridRowInner<TData extends RowData>({
         const isCellSelected = selectedCells?.has(cellKey) ?? false;
         const isCellActive = activeCell?.rowIndex === rowIndex && activeCell?.colId === col.id;
         const isCellCut = cutCells?.has(cellKey) ?? false;
-        
         return (
           <GridCell
             key={col.id}

@@ -1,7 +1,8 @@
+@import "tailwindcss";
+
 .warper-grid-header-row.column-moving .warper-grid-header-cell {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-@import "tailwindcss";
 
 /* ===== shadcn/ui Emerald Theme Variables ===== */
 :root {
@@ -620,9 +621,19 @@
 
   /* Group panel */
   .group-panel { display:flex; align-items:center; gap:8px; padding:6px 0; }
-  .group-panel .pill { padding:6px 8px; border-radius:6px; background:var(--card); border:1px solid var(--border); display:inline-flex; gap:6px; align-items:center }
+  .group-pills { display:flex; align-items:center; gap:6px; }
+  .group-pill { padding:6px 8px; border-radius:6px; background:var(--card); border:1px solid var(--border); display:inline-flex; gap:6px; align-items:center; font-size:12px; max-width:220px; }
+  .group-pill .w-3 { width:12px; height:12px; }
+  .group-sep { color:var(--muted-foreground); font-size:12px; padding:0 4px; }
   .warper-grid-group-row { background: linear-gradient(180deg, rgba(0,0,0,0.02), transparent); border-bottom: 1px solid rgba(0,0,0,0.04); }
   .warper-grid-group-row .px-3 strong { font-weight: 600; }
+
+  /* Simple shadcn-like Accordion styles */
+  .accordion { width: 100%; }
+  .accordion-trigger { padding: 6px 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .accordion-icon { transition: transform 0.18s ease; }
+  .accordion-icon.rotate-180 { transform: rotate(180deg); }
+  .accordion-content { padding-left: 8px; }
 
   /* ===== Master-Detail ===== */
   .warper-master-row {
