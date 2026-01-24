@@ -180,16 +180,16 @@ export function getDefaultContextMenuItems<TData extends RowData = RowData>(): C
 export function createContextMenuPlugin<TData extends RowData = RowData>(
   config?: ContextMenuPluginConfig<TData>
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  let pluginApi: GridApi<TData> | null = null;
 
   return {
     name: 'contextMenu',
     init: (gridApi, pluginConfig) => {
-      api = gridApi;
+      pluginApi = gridApi;
       // Plugin initialized - state management happens in React component
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

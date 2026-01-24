@@ -110,24 +110,24 @@ export function getPageNumbers(
 // ============================================================================
 
 let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: PaginationPluginConfig = {};
+let _pluginConfig: PaginationPluginConfig = {};
 
 export const paginationPlugin: GridPlugin<RowData> = {
   name: 'pagination',
 
   init(api: GridApi<RowData>, config?: PaginationPluginConfig) {
     pluginApi = api;
-    pluginConfig = config || {};
+    _pluginConfig = config || {};
     
     // Apply default page size if provided
-    if (pluginConfig.pageSize) {
-      api.setPageSize(pluginConfig.pageSize);
+    if (_pluginConfig.pageSize) {
+      api.setPageSize(_pluginConfig.pageSize);
     }
   },
 
   destroy() {
     pluginApi = null;
-    pluginConfig = {};
+    _pluginConfig = {};
   },
 };
 
@@ -136,7 +136,6 @@ export const paginationPlugin: GridPlugin<RowData> = {
 // ============================================================================
 
 export function usePagination<TData extends RowData>(api: GridApi<TData>) {
-  const displayedRows = api.getDisplayedRowCount();
   const totalRows = api.getRowCount();
   const page = api.getPage();
   const pageSize = api.getPageSize();

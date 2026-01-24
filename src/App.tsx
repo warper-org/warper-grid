@@ -1,17 +1,12 @@
-  Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, 
-  Copy, Clipboard, Edit3, Filter, ArrowUpDown, Columns3,
-  FileSpreadsheet, CheckSquare, Grid3X3,
-  Zap, ExternalLink, Github, Sparkles, LayoutGrid,
-  Download, RefreshCw, ArrowUp, ArrowDown, Search,
-  Database, Play, Pause
 import { useRef, useMemo, useCallback, useState, useEffect, memo } from 'react';
-import { useRef as useDebounceRef } from 'react';
+
 import { WarperGrid, type WarperGridRef, type ColumnDef } from './warper-grid';
 import { cn } from './lib/utils';
 import { SqlQueryPanel } from './warper-grid/components/SqlQueryPanel';
+import GroupPanel from './warper-grid/components/GroupPanel';
 import { useLiveUpdate, type LiveUpdateConfig } from './warper-grid/components/LiveUpdatePanel';
 import { createSqlDatabaseManager, type SqlDatabaseManager } from './warper-grid/plugins/sql-query';
-import { Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, Copy, Clipboard, Edit3, Filter, ArrowUpDown, Columns3, FileSpreadsheet, CheckSquare, Grid3X3, Zap, ExternalLink, Github, Sparkles, LayoutGrid, Download, RefreshCw, ArrowUp, ArrowDown, Search, Database, Play, Pause } from 'lucide-react';
+import { Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, Clipboard, Edit3, Filter, ArrowUpDown, Columns3, FileSpreadsheet, CheckSquare, Grid3X3, Zap, ExternalLink, Github, Sparkles, LayoutGrid, Download, RefreshCw, ArrowUp, ArrowDown, CornerUpLeft, CornerDownRight, Search, Database, Play, Pause, List } from 'lucide-react';
 
 // ============================================================================
 // Demo Data Types
@@ -385,58 +380,7 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
   );
 });
 
-// ============================================================================
-// Quick Actions Bar
-// ============================================================================
 
-interface QuickActionsProps {
-  gridRef: React.RefObject<WarperGridRef<Person> | null>;
-  dataLength: number;
-  onHelp: () => void;
-}
-
-const QuickActions = memo(function QuickActions({ gridRef, dataLength, onHelp }: QuickActionsProps) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Tooltip content="Scroll to first row">
-        <button onClick={() => gridRef.current?.api.scrollToRow(0)} className="h-9 px-3 flex items-center gap-2 border border-(--border) rounded-lg bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-          <ArrowUp className="w-4 h-4" />
-          <span className="hidden sm:inline">Top</span>
-        </button>
-      </Tooltip>
-      
-      <Tooltip content="Scroll to last row">
-        <button onClick={() => gridRef.current?.api.scrollToRow(dataLength - 1)} className="h-9 px-3 flex items-center gap-2 border border-(--border) rounded-lg bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-          <ArrowDown className="w-4 h-4" />
-          <span className="hidden sm:inline">Bottom</span>
-        </button>
-      </Tooltip>
-      
-      <Tooltip content="Refresh data">
-        <button onClick={() => gridRef.current?.api.refreshCells()} className="h-9 px-3 flex items-center gap-2 border border-(--border) rounded-lg bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-          <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline">Refresh</span>
-        </button>
-      </Tooltip>
-      
-      <div className="w-px h-6 bg-(--border) hidden sm:block" />
-      
-      <Tooltip content="Export to CSV">
-        <button onClick={() => gridRef.current?.api.exportToCsv({ fileName: 'employees.csv' })} className="h-9 px-3 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
-          <Download className="w-4 h-4" />
-          <span className="hidden sm:inline">Export CSV</span>
-        </button>
-      </Tooltip>
-      
-      <Tooltip content="Open help (keyboard shortcuts, features)">
-        <button onClick={onHelp} className="h-9 px-3 flex items-center gap-2 border border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
-          <HelpCircle className="w-4 h-4" />
-          <span className="hidden sm:inline">Help</span>
-        </button>
-      </Tooltip>
-    </div>
-  );
-});
 
 // ============================================================================
 // Stats Display
@@ -497,44 +441,7 @@ function useDarkMode() {
   return [isDark, setIsDark] as const;
 }
 
-// ============================================================================
-// Feature Tips Banner
-// ============================================================================
 
-const FeatureTipsBanner = memo(function FeatureTipsBanner() {
-  const [currentTip, setCurrentTip] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
-  
-  const tips = [
-    { icon: <MousePointer2 className="w-4 h-4" />, text: '💡 Right-click any cell to open the context menu' },
-    { icon: <Grid3X3 className="w-4 h-4" />, text: '💡 Click and drag to select a range of cells' },
-    { icon: <Edit3 className="w-4 h-4" />, text: '💡 Double-click a cell to start editing' },
-    { icon: <Keyboard className="w-4 h-4" />, text: '💡 Press Ctrl+C to copy, Ctrl+V to paste' },
-    { icon: <ArrowUpDown className="w-4 h-4" />, text: '💡 Click column headers to sort, Shift+Click for multi-sort' },
-    { icon: <Keyboard className="w-4 h-4" />, text: '💡 Use Ctrl/Cmd+Shift+A to toggle All/Restore rows per page' },
-  ];
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTip((prev) => (prev + 1) % tips.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [tips.length]);
-  
-  if (!isVisible) return null;
-  
-  return (
-    <div className="relative flex items-center justify-center gap-2 px-4 py-2 bg-linear-to-r from-emerald-500/10 via-emerald-500/5 to-emerald-500/10 border border-emerald-500/20 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300 transition-all duration-500">
-        {tips[currentTip].icon}
-        <span>{tips[currentTip].text}</span>
-      </div>
-      <button onClick={() => setIsVisible(false)} className="absolute right-2 p-1 hover:bg-emerald-500/20 rounded transition-colors">
-        <X className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-      </button>
-    </div>
-  );
-});
 
 // ============================================================================
 // Demo App
@@ -549,7 +456,7 @@ function App() {
   const [showSqlPanel, setShowSqlPanel] = useState(false);
   const [renderTime, setRenderTime] = useState<number>();
   const [quickFilter, setQuickFilter] = useState('');
-  const [liveUpdateConfig, setLiveUpdateConfig] = useState<LiveUpdateConfig>({
+  const [liveUpdateConfig, _setLiveUpdateConfig] = useState<LiveUpdateConfig>({
     interval: 1000,
     rowsPerTick: 10,
     mode: 'random',
@@ -595,7 +502,7 @@ function App() {
   }, []);
 
   // Debounced SQL sync to avoid infinite update loop
-  const debounceRef = useDebounceRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -611,7 +518,7 @@ function App() {
     isLiveUpdating,
     metrics,
     toggle: toggleLiveUpdate,
-    setConfig: setLiveConfig,
+    setConfig: _setLiveConfig,
   } = useLiveUpdate({
     data,
     setData: (updater) => {
@@ -656,9 +563,26 @@ function App() {
     return () => clearInterval(interval);
   }, [isLiveUpdating]);
 
+  // Default plugins to enable at grid ready
+  const defaultPlugins: Array<import('./warper-grid/types').PluginName> = [
+    'sorting', 'filtering', 'pagination', 'selection', 'columnResizing', 'columnMoving', 'export', 'contextMenu', 'clipboard', 'columnMenu', 'cellEditing', 'statusBar'
+  ];
+
+  const [pluginsEnabled, setPluginsEnabled] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const p of defaultPlugins) initial[p] = false;
+    return initial;
+  });
+
+  // Undo/Redo reactive state
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const undoSubRef = useRef<(() => void) | undefined>(undefined);
+
   const handleGridReady = useCallback(() => {
     if (gridRef.current) {
-      gridRef.current.attach(['*'], {
+      // Attach default plugins with sensible configs
+      gridRef.current.attach(defaultPlugins, {
         pagination: { pageSize: 100, pageSizes: [50, 100, 500, 1000] },
         selection: { mode: 'multiple', checkboxSelection: true },
         sorting: { multiSort: true },
@@ -670,8 +594,47 @@ function App() {
         contextMenu: {},
         statusBar: {},
       });
+
+      // Reflect attached plugins in local state
+      setPluginsEnabled(prev => {
+        const next = { ...prev };
+        for (const p of defaultPlugins) next[p] = true;
+        return next;
+      });
+
+      // Subscribe to state changes to update undo/redo button state reactively
+      // Unsubscribe previous if any
+      if (undoSubRef.current) undoSubRef.current();
+      const unsub = gridRef.current.api.subscribe((state) => {
+        setCanUndo((state.undoRedo?.undoStack.length ?? 0) > 0);
+        setCanRedo((state.undoRedo?.redoStack.length ?? 0) > 0);
+      });
+      undoSubRef.current = unsub;
+
+      // Initialize availability
+      setCanUndo(!!gridRef.current.api.canUndo?.());
+      setCanRedo(!!gridRef.current.api.canRedo?.());
     }
   }, []);
+
+  // Cleanup subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (undoSubRef.current) undoSubRef.current();
+    };
+  }, []);
+
+  const togglePlugin = useCallback((pluginName: import('./warper-grid/types').PluginName) => {
+    if (!gridRef.current) return;
+    const isEnabled = pluginsEnabled[pluginName];
+    if (isEnabled) {
+      gridRef.current.detach([pluginName]);
+      setPluginsEnabled(prev => ({ ...prev, [pluginName]: false }));
+    } else {
+      gridRef.current.attach([pluginName as any]);
+      setPluginsEnabled(prev => ({ ...prev, [pluginName]: true }));
+    }
+  }, [pluginsEnabled]);
 
   const handleRowCountChange = useCallback((newCount: number) => {
     if (newCount >= 1000000) {
@@ -687,8 +650,32 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Show help on '?'
       if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
         setShowHelp(true);
+        return;
+      }
+
+      // Ignore when focus is in an editable field
+      const active = document.activeElement as HTMLElement | null;
+      const isEditingField = !!active && (
+        active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable
+      );
+      if (isEditingField) return;
+
+      // Undo (Ctrl/Cmd+Z) and Redo (Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          gridRef.current?.api.undo?.();
+          return;
+        }
+        if (k === 'y' || (k === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          gridRef.current?.api.redo?.();
+          return;
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -819,7 +806,7 @@ function App() {
 
                 {/* Right Section: Actions */}
                 <div className="flex items-center gap-1">
-                  {/* Quick Actions */}
+                  {/* Quick Actions: Scroll + Undo / Redo */}
                   <Tooltip content="Scroll to top">
                     <button onClick={() => gridRef.current?.api.scrollToRow(0)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
                       <ArrowUp className="w-3 h-3" />
@@ -832,9 +819,29 @@ function App() {
                     </button>
                   </Tooltip>
 
-                  <Tooltip content="Refresh data">
-                    <button onClick={() => gridRef.current?.api.refreshCells()} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-                      <RefreshCw className="w-3 h-3" />
+                  <div className="w-px h-4 bg-(--border) mx-1" />
+
+                  <Tooltip content="Undo (Ctrl+Z)">
+                    <button
+                      onClick={() => gridRef.current?.api.undo?.()}
+                      className={cn(
+                        'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                      )}
+                      aria-label="Undo"
+                    >
+                      <CornerUpLeft className="w-3 h-3" />
+                    </button>
+                  </Tooltip> 
+
+                  <Tooltip content="Redo (Ctrl+Y)">
+                    <button
+                      onClick={() => gridRef.current?.api.redo?.()}
+                      className={cn(
+                        'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                      )}
+                      aria-label="Redo"
+                    >
+                      <CornerDownRight className="w-3 h-3" />
                     </button>
                   </Tooltip>
 
@@ -856,6 +863,105 @@ function App() {
                     </button>
                   </Tooltip>
 
+                  {/* Plugin Toggles */}
+                  <div className="flex items-center gap-1 ml-1">
+                    <Tooltip content="Toggle Filtering">
+                      <button
+                        onClick={() => togglePlugin('filtering')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.filtering ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Filter className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Selection">
+                      <button
+                        onClick={() => togglePlugin('selection')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.selection ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Grid3X3 className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Column Moving">
+                      <button
+                        onClick={() => togglePlugin('columnMoving')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.columnMoving ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Columns3 className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Column Resizing">
+                      <button
+                        onClick={() => togglePlugin('columnResizing')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.columnResizing ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Columns3 className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Clipboard">
+                      <button
+                        onClick={() => togglePlugin('clipboard')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.clipboard ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Clipboard className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Cell Editing">
+                      <button
+                        onClick={() => togglePlugin('cellEditing')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.cellEditing ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Status Bar">
+                      <button
+                        onClick={() => togglePlugin('statusBar')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.statusBar ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <LayoutGrid className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content="Toggle Row Grouping">
+                      <button
+                        onClick={() => togglePlugin('rowGrouping')}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                          pluginsEnabled.rowGrouping ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                      >
+                        <List className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
+                  </div>
+
                   {/* Help */}
                   <Tooltip content="Help & Shortcuts">
                     <button onClick={() => setShowHelp(true)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
@@ -866,6 +972,9 @@ function App() {
               </div>
             </div>
           </div>
+
+          {/* Group Panel (drag columns here) */}
+          {pluginsEnabled.rowGrouping && <div className="px-3 py-2 border-b border-(--border) bg-(--background)/30"><GroupPanel api={gridRef.current?.api} /></div>}
 
           {/* Grid Content */}
           <WarperGrid

@@ -7,7 +7,13 @@ export interface ColumnDraggingPluginConfig {
 export function createColumnDraggingPlugin<TData extends RowData = RowData>(
   config?: ColumnDraggingPluginConfig
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  let pluginApi: GridApi<TData> | null = null;
+  // Helper to move column via API if available (defensive)
+  function safeMoveColumn(fromIdx: number, toIdx: number, animation?: boolean) {
+    if (pluginApi && typeof pluginApi.moveColumn === 'function') {
+      pluginApi.moveColumn(fromIdx, toIdx, animation);
+    }
+  }
 
   // Use WeakMaps to store listeners for each element
   const dragStartListeners = new WeakMap<EventTarget, EventListener>();
@@ -37,29 +43,86 @@ export function createColumnDraggingPlugin<TData extends RowData = RowData>(
       header.setAttribute('draggable', 'false');
 
       // Define listeners
+      // Drag start: set data and create a drag ghost for better visuals
+      let ghost: HTMLElement | null = null;
       const ondragstart: EventListener = (e) => {
         const event = e as DragEvent;
-        event.dataTransfer?.setData('text/plain', String(idx));
+        const colId = (header as HTMLElement).getAttribute('data-col-id') || '';
+        const payload = JSON.stringify({ idx, colId });
+        event.dataTransfer?.setData('application/warper-col', payload);
+        event.dataTransfer?.setData('text/plain', payload);
         header.classList.add('dragging');
+
+        // Create a lightweight ghost image of the header
+        try {
+          ghost = (header as HTMLElement).cloneNode(true) as HTMLElement;
+          ghost.style.position = 'absolute';
+          ghost.style.top = '-9999px';
+          ghost.style.left = '-9999px';
+          ghost.style.opacity = '0.95';
+          ghost.style.pointerEvents = 'none';
+          ghost.classList.add('drag-ghost');
+          document.body.appendChild(ghost);
+          if (event.dataTransfer && ghost) {
+            // Use center of ghost as hotspot
+            event.dataTransfer.setDragImage(ghost, Math.floor(ghost.offsetWidth / 2), Math.floor(ghost.offsetHeight / 2));
+          }
+        } catch (err) {
+          // ignore setDragImage errors on older browsers
+        }
       };
+
       const ondragend: EventListener = () => {
         header.classList.remove('dragging');
+        header.classList.remove('drag-over-left');
+        header.classList.remove('drag-over-right');
+        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        ghost = null;
       };
+
       const ondragover: EventListener = (e) => {
         e.preventDefault();
-        header.classList.add('drag-over');
+        // Determine whether the drop would insert before or after this header
+        const event = e as DragEvent;
+        const rect = (header as HTMLElement).getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        if (event.clientX < midX) {
+          header.classList.add('drag-over-left');
+          header.classList.remove('drag-over-right');
+        } else {
+          header.classList.add('drag-over-right');
+          header.classList.remove('drag-over-left');
+        }
       };
+
       const ondragleave: EventListener = () => {
-        header.classList.remove('drag-over');
+        header.classList.remove('drag-over-left');
+        header.classList.remove('drag-over-right');
       };
+
       const ondrop: EventListener = (e) => {
         e.preventDefault();
-        header.classList.remove('drag-over');
+        header.classList.remove('drag-over-left');
+        header.classList.remove('drag-over-right');
         const event = e as DragEvent;
-        const fromIdx = Number(event.dataTransfer?.getData('text/plain'));
-        const toIdx = idx;
-        if (fromIdx !== toIdx && api && typeof api.moveColumn === 'function') {
-          api.moveColumn(fromIdx, toIdx, config?.animation ?? true);
+        let fromIdx = Number(event.dataTransfer?.getData('text/plain'));
+        try {
+          const payload = JSON.parse(event.dataTransfer?.getData('application/warper-col') || event.dataTransfer?.getData('text/plain') || 'null');
+          if (payload && typeof payload.idx === 'number') fromIdx = payload.idx;
+        } catch (err) {
+          // ignore
+        }
+        // Choose target index based on insertion side
+        const rect = (header as HTMLElement).getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        let toIdx = idx;
+        if (event.clientX >= midX) toIdx = idx + 1; // insert after
+        // Normalize to bounds
+        if (toIdx > (document.querySelectorAll('.warper-grid-header-cell').length)) {
+          toIdx = document.querySelectorAll('.warper-grid-header-cell').length;
+        }
+        if (fromIdx !== toIdx && fromIdx !== toIdx - 1) {
+          safeMoveColumn(fromIdx, toIdx - (fromIdx < toIdx ? 1 : 0), config?.animation ?? true);
           setTimeout(attachDragListeners, 0);
         }
       };
@@ -83,11 +146,11 @@ export function createColumnDraggingPlugin<TData extends RowData = RowData>(
   return {
     name: 'columnMoving',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
       setTimeout(attachDragListeners, 100);
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

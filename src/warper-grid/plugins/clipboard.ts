@@ -159,6 +159,7 @@ export async function pasteFromClipboard(): Promise<CellValue[][] | null> {
 
 export function handleClipboardKeyDown<TData extends RowData>(
   e: KeyboardEvent,
+  // api is intentionally unused in this module scope
   api: GridApi<TData>,
   activeCell: CellPosition | null,
   ranges: CellRange[],
@@ -167,7 +168,7 @@ export function handleClipboardKeyDown<TData extends RowData>(
   getFieldValue: (row: TData, colId: string) => CellValue,
   getColumnHeader: (colId: string) => string,
   config: ClipboardPluginConfig,
-  onPasteComplete?: () => void
+  onPasteComplete?: (pasted?: CellValue[][] | null) => void
 ): void {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? e.metaKey : e.ctrlKey;
@@ -223,9 +224,10 @@ export function handleClipboardKeyDown<TData extends RowData>(
     pasteFromClipboard().then(pastedData => {
       if (pastedData && pastedData.length > 0) {
         config.onPaste?.(formatForClipboard(pastedData));
-        onPasteComplete?.();
-        // TODO: Apply pasted data if editing is enabled
-      }
+        // Provide parsed pasted data back via callback for plugin to handle
+        onPasteComplete?.(pastedData);
+        // TODO: Apply pasted data if editing is enabled (plugin can handle onPasteComplete)      } else {
+        onPasteComplete?.(null);      }
     });
   }
 }
@@ -237,8 +239,8 @@ export function handleClipboardKeyDown<TData extends RowData>(
 export function createClipboardPlugin<TData extends RowData = RowData>(
   config?: ClipboardPluginConfig
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
-  const pluginConfig: ClipboardPluginConfig = {
+  let pluginApi: GridApi<TData> | null = null;
+  const _pluginConfig: ClipboardPluginConfig = {
     enableCopy: true,
     enablePaste: true,
     enableCut: true,
@@ -249,10 +251,53 @@ export function createClipboardPlugin<TData extends RowData = RowData>(
   return {
     name: 'clipboard',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
+
+      // Attach keyboard handler for copy/paste/cut
+      const keyHandler = (e: KeyboardEvent) => {
+        const state = pluginApi?.getState();
+        const activeCell = (state as any).editing?.editingCell ? { rowIndex: (state as any).editing.editingCell.rowIndex, colId: (state as any).editing.editingCell.colId } : null;
+        const ranges: any[] = []; // Range support will be added when cell-selection exposes state
+
+        handleClipboardKeyDown(
+          e,
+          pluginApi as GridApi<TData>,
+          activeCell as any,
+          ranges as any,
+          pluginApi!.getColumns().map(c => c.id),
+          () => pluginApi!.getData() as TData[],
+          (row: TData, colId: string): CellValue => {
+            const field = pluginApi!.getColumn(colId)?.field as string;
+            return (row as Record<string, unknown>)[field] as CellValue;
+          },
+          (colId) => pluginApi!.getColumn(colId)?.headerName || pluginApi!.getColumn(colId)?.id || '',
+          _pluginConfig,
+          (pasted) => {
+            // Apply a simple single-cell paste: if pasted is non-null and activeCell present
+            try {
+              if (pasted && pasted.length > 0 && activeCell) {
+                const first = pasted[0][0];
+                const state = pluginApi!.getState();
+                const colDef = pluginApi!.getColumn(activeCell.colId);
+                const currentVal = (state.data[activeCell.rowIndex] as any)[String(colDef?.field)];
+                pluginApi!.applyEdit?.(activeCell.rowIndex, activeCell.colId, currentVal, first);
+              }
+            } catch (err) {
+              console.error('Clipboard: paste apply failed', err);
+            }
+          }
+        );
+      };
+
+      document.addEventListener('keydown', keyHandler);
+
+      // Store the handler so we can remove it on destroy
+      (createClipboardPlugin as any)._keyHandler = keyHandler;
     },
     destroy: () => {
-      api = null;
+      const keyHandler = (createClipboardPlugin as any)._keyHandler;
+      if (keyHandler) document.removeEventListener('keydown', keyHandler);
+      pluginApi = null;
     },
   };
 }

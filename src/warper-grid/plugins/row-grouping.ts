@@ -340,9 +340,11 @@ export function flattenGroupedData<TData extends RowData>(
 export function createRowGroupingPlugin<TData extends RowData = RowData>(
   config?: RowGroupingPluginConfig
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
-  
-  const pluginConfig: RowGroupingPluginConfig = {
+  let pluginApi: GridApi<TData> | null = null;
+  let groupBy: string[] = config?.groupBy || [];
+  const expandedGroups = new Set<string>(config?.autoExpandGroups ? ['__all__'] : []);
+
+  const _pluginConfig: RowGroupingPluginConfig = {
     groupBy: [],
     autoExpandGroups: false,
     maxGroupDepth: 10,
@@ -351,13 +353,75 @@ export function createRowGroupingPlugin<TData extends RowData = RowData>(
     ...config,
   };
 
+  function recompute(state: import('../types').GridState<TData>) {
+    if (!pluginApi) return;
+    const data = (state.processedData && state.processedData.length ? state.processedData as any as TData[] : state.data) as TData[];
+    if (!groupBy || groupBy.length === 0) {
+      // restore processed data to ungrouped (let other processors handle sorting/filtering)
+      pluginApi.setState({ processedData: data, grouping: { groupBy: [], expandedGroups: [] } });
+      return;
+    }
+
+    const grouped = groupData(data, groupBy, state.columns, expandedGroups, (r, colId) => (r as any)[colId]);
+    const flattened = flattenGroupedData(grouped);
+    pluginApi.setState({ processedData: flattened as any, grouping: { groupBy: groupBy.slice(), expandedGroups: Array.from(expandedGroups) } });
+  }
+
   return {
     name: 'rowGrouping',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
+
+      // Expose API
+      (pluginApi as any).setGroupColumns = (cols: string[]) => {
+        groupBy = cols || [];
+        recompute(pluginApi!.getState());
+      };
+      (pluginApi as any).getGroupColumns = () => groupBy.slice();
+      (pluginApi as any).toggleGroupExpand = (path: string[] | string) => {
+        const key = Array.isArray(path) ? createGroupPath(path as any) : String(path);
+        if (expandedGroups.has(key)) expandedGroups.delete(key);
+        else expandedGroups.add(key);
+        recompute(pluginApi!.getState());
+      };
+      (pluginApi as any).expandAllGroups = () => {
+        // naive: collect all groups from current data
+        const state = pluginApi!.getState();
+        const data = state.data;
+        // Collect by doing a first pass
+        const collect = (rows: TData[], cols: string[], parentPath: any[] = []) => {
+          if (cols.length === 0) return;
+          const col = cols[0];
+          const groups = new Map<string, TData[]>();
+          for (const r of rows) {
+            const v = String((r as any)[col] ?? '__null__');
+            if (!groups.has(v)) groups.set(v, []);
+            groups.get(v)!.push(r);
+          }
+          for (const [k, rs] of groups) {
+            const p = [...parentPath, k];
+            expandedGroups.add(createGroupPath(p));
+            if (cols.length > 1) collect(rs, cols.slice(1), p);
+          }
+        };
+        collect(data, groupBy);
+        recompute(state);
+      };
+      (pluginApi as any).collapseAllGroups = () => {
+        expandedGroups.clear();
+        recompute(pluginApi!.getState());
+      };
+
+      // Recompute when initialized (based on current state)
+      recompute(pluginApi.getState());
+    },
+    onStateChange: (state) => {
+      // Recompute when data or columns change
+      if (!pluginApi) return;
+      recompute(state as any);
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

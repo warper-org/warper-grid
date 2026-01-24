@@ -4,7 +4,6 @@ import type {
   GridApi,
   CellValue,
   ColumnDef,
-  CellEditorParams,
 } from '../types';
 import type { CellPosition } from './cell-selection';
 
@@ -107,7 +106,8 @@ export function isColumnEditable<TData extends RowData>(
   rowIndex: number
 ): boolean {
   if (typeof column.editable === 'function') {
-    return column.editable;
+    // If editable is a predicate function, call it with row context
+    return (column.editable as unknown as (row: TData, rowIndex: number) => boolean)(rowData, rowIndex);
   }
   return column.editable === true;
 }
@@ -235,6 +235,16 @@ export class UndoRedoManager {
   constructor(maxSize: number = 100) {
     this.maxSize = maxSize;
   }
+
+  setMaxSize(maxSize: number) {
+    this.maxSize = maxSize;
+    if (this.undoStack.length > this.maxSize) {
+      this.undoStack = this.undoStack.slice(-this.maxSize);
+    }
+    if (this.redoStack.length > this.maxSize) {
+      this.redoStack = this.redoStack.slice(-this.maxSize);
+    }
+  }
   
   push(action: UndoRedoAction): void {
     this.undoStack.push(action);
@@ -284,10 +294,11 @@ export class UndoRedoManager {
 export function createCellEditingPlugin<TData extends RowData = RowData>(
   config?: CellEditingPluginConfig
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  // Keep API ref for future use; prefix to avoid unused warnings
+  let pluginApi: GridApi<TData> | null = null;
   const undoRedoManager = new UndoRedoManager(config?.undoStackSize || 100);
   
-  const pluginConfig: CellEditingPluginConfig = {
+  const _pluginConfig: CellEditingPluginConfig = {
     editTrigger: 'doubleClick',
     enabled: true,
     undoRedo: true,
@@ -295,14 +306,47 @@ export function createCellEditingPlugin<TData extends RowData = RowData>(
     ...config,
   };
 
+  let lastState: import('../types').GridState<TData> | null = null;
+
   return {
     name: 'cellEditing',
-    init: (gridApi) => {
-      api = gridApi;
+    init: (gridApi, cfg) => {
+      pluginApi = gridApi;
+      if (cfg?.undoStackSize) undoRedoManager.setMaxSize(cfg.undoStackSize);
+      // Merge provided config for runtime hooks
+      Object.assign(_pluginConfig, cfg || {});
+    },
+    onStateChange(state) {
+      // Detect start/cancel/complete transitions
+      try {
+        if (!lastState && state.editing?.isEditing) {
+          // start
+          _pluginConfig.onEditStart?.({ rowIndex: state.editing!.editingCell!.rowIndex, colId: state.editing!.editingCell!.colId, value: getCellValueForEdit(state.data[state.editing!.editingCell!.rowIndex], state.columns.find(c => c.id === state.editing!.editingCell!.colId) as ColumnDef<TData>) });
+        }
+
+        if (lastState?.editing?.isEditing && !state.editing?.isEditing) {
+          // Transitioned out of editing: determine if it was a commit or cancel
+          const prevUndoLen = lastState.undoRedo?.undoStack.length ?? 0;
+          const curUndoLen = state.undoRedo?.undoStack.length ?? 0;
+
+          if (curUndoLen > prevUndoLen) {
+            // commit: last undo action is the applied edit
+            const lastAction = state.undoRedo!.undoStack[state.undoRedo!.undoStack.length - 1];
+            _pluginConfig.onEditComplete?.({ rowIndex: lastAction.rowIndex, colId: lastAction.colId, oldValue: lastAction.oldValue, newValue: lastAction.newValue } as EditCompleteParams);
+          } else {
+            // cancelled
+            const ed = lastState.editing!.editingCell!;
+            _pluginConfig.onEditCancel?.({ rowIndex: ed.rowIndex, colId: ed.colId, originalValue: lastState.editing!.originalValue } as EditCancelParams);
+          }
+        }
+      } finally {
+        lastState = state;
+      }
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
       undoRedoManager.clear();
+      lastState = null;
     },
   };
 }

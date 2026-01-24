@@ -213,15 +213,58 @@ export function applyQuickFilter<TData extends RowData>(
     return data;
   }
 
-  const searchText = quickFilterText.toLowerCase().trim();
-  const searchTerms = searchText.split(/\s+/);
+  const trimmed = quickFilterText.trim();
+
+  // If user provided a regex literal: /pattern/flags
+  const regexLiteral = trimmed.match(/^\/(.*)\/(i?)$/i);
+  if (regexLiteral) {
+    try {
+      const pattern = regexLiteral[1];
+      const flags = regexLiteral[2] || '';
+      const rx = new RegExp(pattern, flags);
+      return data.filter(row => {
+        const values = getRowValues(row);
+        const rowText = values.map(v => String(v ?? '')).join(' ');
+        return rx.test(rowText);
+      });
+    } catch (err) {
+      // Fall through to token parsing on invalid regex
+      console.warn('[QuickFilter] invalid regex', err);
+    }
+  }
+
+  // Tokenize with support for quoted phrases ("..."), negation (-term), and OR groups (a|b)
+  const tokens: string[] = [];
+  const tokenRegex = /"([^"]+)"|'([^']+)'|([^\s]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRegex.exec(trimmed)) !== null) {
+    tokens.push(m[1] ?? m[2] ?? m[3]);
+  }
 
   return data.filter(row => {
     const values = getRowValues(row);
-    const rowText = values.map(v => String(v ?? '').toLowerCase()).join(' ');
-    
-    // All search terms must be found in the row
-    return searchTerms.every(term => rowText.includes(term));
+    const rowText = values.map(v => String(v ?? '')).join(' ').toLowerCase();
+
+    // All tokens must match (unless negated)
+    return tokens.every(tokenRaw => {
+      if (!tokenRaw) return true;
+      const token = tokenRaw.trim();
+
+      // Negation
+      if (token.startsWith('-') && token.length > 1) {
+        const t = token.slice(1).toLowerCase();
+        return !rowText.includes(t);
+      }
+
+      // OR group e.g. a|b (match any)
+      if (token.includes('|')) {
+        const parts = token.split('|').map(p => p.toLowerCase());
+        return parts.some(p => rowText.includes(p));
+      }
+
+      // Default partial match
+      return rowText.includes(token.toLowerCase());
+    });
   });
 }
 
@@ -286,7 +329,7 @@ export const filteringPlugin: GridPlugin<RowData> = {
 // ============================================================================
 
 export function useFiltering<TData extends RowData>(api: GridApi<TData>) {
-  const setFilter = (colId: string, filterType: FilterType, value: unknown, operator?: string) => {
+  const setFilter = (colId: string, filterType: FilterType, value: unknown, operator?: FilterModel['operator']) => {
     const currentModel = api.getFilterModel();
     const existingIndex = currentModel.findIndex(f => f.colId === colId);
     

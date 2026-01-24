@@ -126,19 +126,19 @@ export function isCellSelected(selection: SelectionState, rowIndex: number, colI
 // ============================================================================
 
 let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: SelectionPluginConfig = {};
+let _pluginConfig: SelectionPluginConfig = {};
 
 export const selectionPlugin: GridPlugin<RowData> = {
   name: 'selection',
 
   init(api: GridApi<RowData>, config?: SelectionPluginConfig) {
     pluginApi = api;
-    pluginConfig = config || { mode: 'multiple' };
+    _pluginConfig = config || { mode: 'multiple' };
   },
 
   destroy() {
     pluginApi = null;
-    pluginConfig = {};
+    _pluginConfig = {};
   },
 };
 

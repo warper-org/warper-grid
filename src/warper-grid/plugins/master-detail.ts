@@ -226,9 +226,9 @@ export function DefaultDetailRenderer<TData extends RowData>({
 export function createMasterDetailPlugin<TData extends RowData = RowData>(
   config?: MasterDetailPluginConfig<TData>
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  let pluginApi: GridApi<TData> | null = null;
   
-  const pluginConfig: MasterDetailPluginConfig<TData> = {
+  const _pluginConfig: MasterDetailPluginConfig<TData> = {
     enabled: true,
     detailRowHeight: 200,
     expandFirstRow: false,
@@ -240,10 +240,10 @@ export function createMasterDetailPlugin<TData extends RowData = RowData>(
   return {
     name: 'masterDetail',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

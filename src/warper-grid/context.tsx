@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useRef, useMemo, useEffect, type ReactNode } from 'react';
 import type {
   RowData,
   GridState,
@@ -9,6 +9,7 @@ import type {
   ColumnPin,
   SelectionState,
   ExportParams,
+  CellValue,
 } from './types';
 
 // ============================================================================
@@ -45,8 +46,13 @@ export type GridAction<TData extends RowData = RowData> =
   | { type: 'SELECT_ALL' }
   | { type: 'DESELECT_ALL' }
   | { type: 'SET_SELECTION'; payload: SelectionState }
-  | { type: 'UPDATE_PROCESSED_DATA'; payload: TData[] };
-
+  | { type: 'UPDATE_PROCESSED_DATA'; payload: TData[] }
+  | { type: 'SET_GROUPING'; payload: { groupBy: string[]; expandedGroups?: string[] } }
+  | { type: 'START_EDITING'; payload: { rowIndex: number; colId: string; originalValue: CellValue | null } }
+  | { type: 'CANCEL_EDITING' }
+  | { type: 'APPLY_EDIT'; payload: { rowIndex: number; colId: string; oldValue: CellValue | null; newValue: CellValue | null } }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 // ============================================================================
 // Grid Reducer
 // ============================================================================
@@ -92,6 +98,84 @@ export function gridReducer<TData extends RowData>(
     
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
+
+    case 'START_EDITING': {
+      const { rowIndex, colId, originalValue } = action.payload;
+      return { ...state, editing: { isEditing: true, editingCell: { rowIndex, colId }, originalValue } };
+    }
+
+    case 'CANCEL_EDITING': {
+      return { ...state, editing: { isEditing: false, editingCell: null, originalValue: undefined } };
+    }
+
+    case 'APPLY_EDIT': {
+      const { rowIndex, colId, oldValue, newValue } = action.payload;
+      // Apply edit immutably
+      const newData = state.data.map((r, idx) => {
+        if (idx !== rowIndex) return r;
+        if (!state.columns) return r;
+        const col = state.columns.find(c => c.id === colId);
+        if (!col || !col.field) return r;
+        return { ...r, [String(col.field)]: newValue } as TData;
+      });
+
+      // Update processedData if needed: naive approach - recompute by re-applying filters/sorts is expensive;
+      // For now update processedData entries that match identity (if processedData references same objects) by mapping indices where the object matches original
+      const newProcessed = state.processedData.map((r) => {
+        // try to detect by unique identity: assume same object reference was used
+        // Fallback: shallow compare by stringified row to avoid costly ops
+        return r;
+      });
+
+      // Push to undo stack
+      const undoRedo = state.undoRedo || { undoStack: [], redoStack: [], maxSize: 100 };
+      const newUndo = [...undoRedo.undoStack, { type: 'cell-edit' as const, rowIndex, colId, oldValue, newValue }];
+      if (newUndo.length > (undoRedo.maxSize || 100)) newUndo.shift();
+
+      return {
+        ...state,
+        data: newData,
+        processedData: newProcessed,
+        editing: { isEditing: false, editingCell: null, originalValue: undefined },
+        undoRedo: { ...undoRedo, undoStack: newUndo, redoStack: [] },
+      };
+    }
+
+    case 'UNDO': {
+      const undoRedo = state.undoRedo || { undoStack: [], redoStack: [], maxSize: 100 };
+      const actionToUndo = undoRedo.undoStack[undoRedo.undoStack.length - 1];
+      if (!actionToUndo) return state;
+      const newUndo = undoRedo.undoStack.slice(0, -1);
+      const newRedo = [...undoRedo.redoStack, actionToUndo];
+
+      const { rowIndex, colId, oldValue } = actionToUndo;
+      const newData = state.data.map((r, idx) => {
+        if (idx !== rowIndex) return r;
+        const col = state.columns.find(c => c.id === colId);
+        if (!col || !col.field) return r;
+        return { ...r, [String(col.field)]: oldValue } as TData;
+      });
+
+      return { ...state, data: newData, processedData: state.processedData, undoRedo: { ...undoRedo, undoStack: newUndo, redoStack: newRedo } };
+    }
+
+    case 'REDO': {
+      const undoRedo = state.undoRedo || { undoStack: [], redoStack: [], maxSize: 100 };
+      const actionToRedo = undoRedo.redoStack[undoRedo.redoStack.length - 1];
+      if (!actionToRedo) return state;
+      const newRedo = undoRedo.redoStack.slice(0, -1);
+      const newUndo = [...undoRedo.undoStack, actionToRedo];
+
+      const { rowIndex, colId, newValue } = actionToRedo;
+      const newData = state.data.map((r, idx) => {
+        if (idx !== rowIndex) return r;
+        const col = state.columns.find(c => c.id === colId);
+        if (!col || !col.field) return r;
+        return { ...r, [String(col.field)]: newValue } as TData;
+      });
+
+      return { ...state, data: newData, processedData: state.processedData, undoRedo: { ...undoRedo, undoStack: newUndo, redoStack: newRedo } };
+    }
     
     case 'SET_COLUMN_WIDTH': {
       const newColumnState = new Map(state.columnState);
@@ -162,6 +246,11 @@ export function gridReducer<TData extends RowData>(
 
     case 'UPDATE_PROCESSED_DATA':
       return { ...state, processedData: action.payload };
+
+    case 'SET_GROUPING': {
+      const { groupBy, expandedGroups } = action.payload;
+      return { ...state, grouping: { groupBy, expandedGroups } } as GridState<TData>;
+    }
     
     default:
       return state;
@@ -193,6 +282,7 @@ export function createInitialState<TData extends RowData>(
     previousPageSize: 100,
     isLoading: false,
     quickFilterText: '',
+    grouping: { groupBy: [], expandedGroups: [] },
   };
 }
 
@@ -206,7 +296,26 @@ export function createGridApi<TData extends RowData>(
   scrollToIndexFn?: (index: number, behavior?: ScrollBehavior) => void
 ): GridApi<TData> {
   const getState = () => stateRef.current;
-  
+  const _stateListeners: Array<(s: GridState<TData>) => void> = [];
+
+  const subscribe = (listener: (s: GridState<TData>) => void) => {
+    _stateListeners.push(listener);
+    return () => {
+      const idx = _stateListeners.indexOf(listener);
+      if (idx !== -1) _stateListeners.splice(idx, 1);
+    };
+  };
+
+  const notifyStateChange = (s: GridState<TData>) => {
+    for (const l of _stateListeners) {
+      try {
+        l(s);
+      } catch (err) {
+        console.error('Grid state listener error:', err);
+      }
+    }
+  };
+
   return {
     // Column reordering
     moveColumn: (fromIdx: number, toIdx: number, animation?: boolean) => {
@@ -258,6 +367,32 @@ export function createGridApi<TData extends RowData>(
     setColumnPinned: (colId: string, pinned: ColumnPin) => {
       dispatch({ type: 'SET_COLUMN_PINNED', payload: { colId, pinned } });
     },
+
+    // Cell editing
+    startEditing: (rowIndex: number, colId: string) => {
+      const state = getState();
+      const originalValue = state.data[rowIndex] && state.columns.find(c => c.id === colId) ? (state.data[rowIndex] as Record<string, unknown>)[String(state.columns.find(c => c.id === colId)?.field)] as CellValue : null;
+      dispatch({ type: 'START_EDITING', payload: { rowIndex, colId, originalValue } });
+    },
+
+    stopEditing: (cancel?: boolean) => {
+      if (cancel) {
+        dispatch({ type: 'CANCEL_EDITING' });
+      } else {
+        dispatch({ type: 'CANCEL_EDITING' });
+      }
+    },
+
+    // Apply an edit programmatically (handles undo stack via reducer)
+    applyEdit: (rowIndex: number, colId: string, oldValue: CellValue | null, newValue: CellValue | null) => {
+      dispatch({ type: 'APPLY_EDIT', payload: { rowIndex, colId, oldValue, newValue } });
+    },
+
+    // Undo/Redo helpers
+    undo: () => dispatch({ type: 'UNDO' }),
+    redo: () => dispatch({ type: 'REDO' }),
+    canUndo: () => (getState().undoRedo?.undoStack.length ?? 0) > 0,
+    canRedo: () => (getState().undoRedo?.redoStack.length ?? 0) > 0,
     
     autoSizeColumn: (colId: string) => {
       // TODO: Implement auto-sizing based on content
@@ -376,15 +511,7 @@ export function createGridApi<TData extends RowData>(
       scrollToIndexFn?.(rowIndex);
     },
     
-    // Cell editing
-    startEditing: () => {
-      // TODO: Implement cell editing
-    },
-    
-    stopEditing: () => {
-      // TODO: Implement cell editing
-    },
-    
+
     // Export
     exportToCsv: (params?: ExportParams) => {
       const state = getState();
@@ -433,6 +560,17 @@ export function createGridApi<TData extends RowData>(
       if (newState.isLoading !== undefined) dispatch({ type: 'SET_LOADING', payload: newState.isLoading });
       if (newState.quickFilterText !== undefined) dispatch({ type: 'SET_QUICK_FILTER', payload: newState.quickFilterText });
       if (newState.selection !== undefined) dispatch({ type: 'SET_SELECTION', payload: newState.selection });
+      if (newState.grouping !== undefined) dispatch({ type: 'SET_GROUPING', payload: newState.grouping });
+    },
+
+    // State subscription helpers
+    subscribe: (listener: (s: GridState<TData>) => void) => {
+      return subscribe(listener);
+    },
+
+    // Internal: notify state change
+    notifyStateChange: (s: GridState<TData>) => {
+      notifyStateChange(s);
     },
   };
 }
@@ -474,6 +612,11 @@ export function GridProvider<TData extends RowData>({
     [dispatch, scrollToIndex]
   );
   
+  // Notify any subscribers when the state changes
+  useEffect(() => {
+    (api as any).notifyStateChange?.(state);
+  }, [state, api]);
+
   const value = useMemo(
     () => ({ state, api, dispatch }),
     [state, api, dispatch]

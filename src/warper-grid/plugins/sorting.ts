@@ -125,24 +125,24 @@ export function updateSortModel(
 // ============================================================================
 
 let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: SortingPluginConfig = {};
+let _pluginConfig: SortingPluginConfig = {};
 
 export const sortingPlugin: GridPlugin<RowData> = {
   name: 'sorting',
 
   init(api: GridApi<RowData>, config?: SortingPluginConfig) {
     pluginApi = api;
-    pluginConfig = config || {};
+    _pluginConfig = config || {};
     
     // Apply default sort if provided
-    if (pluginConfig.defaultSort && pluginConfig.defaultSort.length > 0) {
-      api.setSortModel(pluginConfig.defaultSort);
+    if (_pluginConfig.defaultSort && _pluginConfig.defaultSort.length > 0) {
+      api.setSortModel(_pluginConfig.defaultSort);
     }
   },
 
   destroy() {
     pluginApi = null;
-    pluginConfig = {};
+    _pluginConfig = {};
   },
 };
 

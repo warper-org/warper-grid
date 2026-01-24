@@ -14,6 +14,12 @@ import { selectionPlugin } from './plugins/selection';
 import { columnResizingPlugin } from './plugins/column-resizing';
 import { exportPlugin } from './plugins/export';
 import createColumnDraggingPlugin from './plugins/column-dragging';
+import { createCellEditingPlugin } from './plugins/cell-editing';
+import createColumnMenuPlugin from './plugins/column-menu';
+import createClipboardPlugin from './plugins/clipboard';
+import createContextMenuPlugin from './plugins/context-menu';
+import createStatusBarPlugin from './plugins/status-bar';
+import createRowGroupingPlugin from './plugins/row-grouping';
 
 // ============================================================================
 // Plugin Registry
@@ -27,22 +33,20 @@ const builtInPlugins: Map<PluginName, () => GridPlugin<RowData>> = new Map([
   ['columnResizing', () => columnResizingPlugin],
   ['columnMoving', () => createColumnDraggingPlugin()],
   ['export', () => exportPlugin],
-  // Advanced plugins (no implementation yet, registered for future use)
-  ['contextMenu', () => createPlaceholderPlugin('contextMenu')],
-  ['cellSelection', () => createPlaceholderPlugin('cellSelection')],
-  ['clipboard', () => createPlaceholderPlugin('clipboard')],
-  ['columnMenu', () => createPlaceholderPlugin('columnMenu')],
-  ['cellEditing', () => createPlaceholderPlugin('cellEditing')],
-  ['rowGrouping', () => createPlaceholderPlugin('rowGrouping')],
+  ['contextMenu', () => createContextMenuPlugin()],
+  ['clipboard', () => createClipboardPlugin()],
+  ['columnMenu', () => createColumnMenuPlugin()],
+  ['cellEditing', () => createCellEditingPlugin()],
+  ['rowGrouping', () => createRowGroupingPlugin()],
   ['masterDetail', () => createPlaceholderPlugin('masterDetail')],
-  ['statusBar', () => createPlaceholderPlugin('statusBar')],
+  ['statusBar', () => createStatusBarPlugin()],
 ]);
 
 // Custom plugin registry for user-defined plugins
 const customPlugins: Map<string, () => GridPlugin<RowData>> = new Map();
 
 // Helper to create placeholder plugins for features with utilities but no runtime plugin
-function createPlaceholderPlugin(name: string): GridPlugin<RowData> {
+function createPlaceholderPlugin(name: PluginName): GridPlugin<RowData> {
   return {
     name,
     init: () => {
@@ -102,11 +106,15 @@ export class PluginManager<TData extends RowData = RowData> {
 
       const plugin = pluginFactory() as GridPlugin<TData>;
       
-      // Initialize the plugin
+      // Initialize the plugin (with error handling and logging)
       const pluginConfig = this.config[pluginName];
-      plugin.init?.(this.api, pluginConfig);
-      
-      this.loadedPlugins.set(pluginName, plugin);
+      try {
+        plugin.init?.(this.api, pluginConfig);
+        console.info(`PluginManager: Initialized plugin "${pluginName}"`);
+        this.loadedPlugins.set(pluginName, plugin);
+      } catch (err) {
+        console.error(`PluginManager: Failed to initialize plugin "${pluginName}":`, err);
+      }
     }
   }
 
@@ -157,9 +165,9 @@ export class PluginManager<TData extends RowData = RowData> {
   /**
    * Notify all plugins of state change
    */
-  notifyStateChange(state: unknown): void {
+  notifyStateChange(state: import('./types').GridState<TData>): void {
     for (const [, plugin] of this.loadedPlugins) {
-      plugin.onStateChange?.(state as TData[]);
+      plugin.onStateChange?.(state);
     }
   }
 }

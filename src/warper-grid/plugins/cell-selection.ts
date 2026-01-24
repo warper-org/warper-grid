@@ -92,7 +92,7 @@ export function isCellInRange(
 /**
  * Check if a cell is in any of the ranges
  */
-export function isCellSelected(
+export function isCellSelectedInRanges(
   cell: CellPosition,
   ranges: CellRange[],
   columnOrder: string[]
@@ -203,8 +203,9 @@ export function getSelectionBounds(
 export function createCellSelectionPlugin<TData extends RowData = RowData>(
   config?: CellSelectionPluginConfig
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
-  const pluginConfig = {
+  // Internal API reference (unused in current implementation)
+  let pluginApi: GridApi<TData> | null = null;
+  const _pluginConfig = {
     enableRangeSelection: true,
     enableMultiRangeSelection: true,
     enableFillHandle: true,
@@ -214,10 +215,10 @@ export function createCellSelectionPlugin<TData extends RowData = RowData>(
   return {
     name: 'selection',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

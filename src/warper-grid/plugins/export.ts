@@ -176,120 +176,86 @@ export async function copyToClipboard<TData extends RowData>(
 // ============================================================================
 
 let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: ExportPluginConfig = {};
+let _pluginConfig: ExportPluginConfig = {};
 
 export const exportPlugin: GridPlugin<RowData> = {
   name: 'export',
 
   init(api: GridApi<RowData>, config?: ExportPluginConfig) {
     pluginApi = api;
-    pluginConfig = config || {};
+    _pluginConfig = config || {};
   },
 
   destroy() {
     pluginApi = null;
-    pluginConfig = {};
+    _pluginConfig = {};
   },
+
+  // Exposed runtime helpers
+  onStateChange() {
+    // no-op: the helpers below read from pluginApi directly
+  },
+
+  // Expose an API-like interface from the plugin factory consumers can call via plugin manager if needed
+  // For now export standard helpers as named exports via module-level functions
 };
 
-// ============================================================================
-// Export Hook
-// ============================================================================
+// Module-level helpers that operate against the registered pluginApi
+export function exportToCsv(fileName?: string, onlySelected: boolean = false) {
+  if (!pluginApi) return;
+  const state = pluginApi.getState();
+  const columns = state.columns;
+  const data = onlySelected ? Array.from(state.selection.selectedRows).map(i => state.processedData[i]) : state.processedData;
+  const useAsync = data.length > LARGE_DATASET_THRESHOLD;
 
-export function useExport<TData extends RowData>(api: GridApi<TData>) {
-  const exportToCsv = (fileName?: string, onlySelected: boolean = false) => {
-    const state = api.getState();
-    const columns = state.columns;
-    const data = onlySelected 
-      ? Array.from(state.selection.selectedRows).map(i => state.processedData[i])
-      : state.processedData;
-    
-    const useAsync = data.length > LARGE_DATASET_THRESHOLD;
-    if (useAsync) {
-      // Async, chunked export to avoid blocking
-      dataToCSVAsync(data, columns, {
-        includeHeaders: true,
-        getValue: (row, colId) => {
-          const col = columns.find(c => c.id === colId);
-          if (col?.field) {
-            return (row as Record<string, unknown>)[col.field as string] as CellValue;
-          }
-          return '';
-        },
-      }).then(csvContent => downloadCSV(csvContent, fileName || 'export.csv'));
-    } else {
-      const csvContent = dataToCSV(data, columns, {
-        includeHeaders: true,
-        getValue: (row, colId) => {
-          const col = columns.find(c => c.id === colId);
-          if (col?.field) {
-            return (row as Record<string, unknown>)[col.field as string] as CellValue;
-          }
-          return '';
-        },
-      });
-      downloadCSV(csvContent, fileName || 'export.csv');
-    }
-  };
-
-  const copySelected = async () => {
-    const state = api.getState();
-    // Support large selections and allSelected marker
-    let selectedData: TData[] = [];
-    if (state.selection.allSelected) {
-      selectedData = state.processedData;
-    } else {
-      selectedData = Array.from(state.selection.selectedRows).map(i => state.processedData[i]);
-    }
-    
-    if (selectedData.length === 0) {
-      return false;
-    }
-    
-    // For large copies, use async chunking via dataToCSVAsync
-    if (selectedData.length > LARGE_DATASET_THRESHOLD) {
-      const tsv = await dataToCSVAsync(selectedData, state.columns, {
-        includeHeaders: false,
-        columnSeparator: '\t',
-        getValue: (row, colId) => {
-          const col = state.columns.find(c => c.id === colId);
-          if (col?.field) {
-            return (row as Record<string, unknown>)[col.field as string] as CellValue;
-          }
-          return '';
-        },
-      });
-      await navigator.clipboard.writeText(tsv);
-      return true;
-    }
-
-    return copyToClipboard(selectedData, state.columns, {
-      includeHeaders: false,
+  if (useAsync) {
+    dataToCSVAsync(data, columns, {
+      includeHeaders: true,
       getValue: (row, colId) => {
-        const col = state.columns.find(c => c.id === colId);
-        if (col?.field) {
-          return (row as Record<string, unknown>)[col.field as string] as CellValue;
-        }
+        const col = columns.find(c => c.id === colId);
+        if (col?.field) return (row as Record<string, unknown>)[col.field as string] as CellValue;
+        return '';
+      },
+    }).then(csvContent => downloadCSV(csvContent, fileName || 'export.csv'));
+  } else {
+    const csvContent = dataToCSV(data, columns, {
+      includeHeaders: true,
+      getValue: (row, colId) => {
+        const col = columns.find(c => c.id === colId);
+        if (col?.field) return (row as Record<string, unknown>)[col.field as string] as CellValue;
         return '';
       },
     });
-  };
+    downloadCSV(csvContent, fileName || 'export.csv');
+  }
+}
 
-  const copyAll = async (includeHeaders: boolean = true) => {
-    const state = api.getState();
-    
-    return copyToClipboard(state.processedData, state.columns, {
-      includeHeaders,
-      getValue: (row, colId) => {
-        const col = state.columns.find(c => c.id === colId);
-        if (col?.field) {
-          return (row as Record<string, unknown>)[col.field as string] as CellValue;
-        }
-        return '';
-      },
-    });
-  };
+export async function copySelected() {
+  if (!pluginApi) return false;
+  const state = pluginApi.getState();
+  let selectedData: RowData[] = [];
+  if (state.selection.allSelected) selectedData = state.processedData;
+  else selectedData = Array.from(state.selection.selectedRows).map(i => state.processedData[i]);
 
+  if (selectedData.length === 0) return false;
+
+  if (selectedData.length > LARGE_DATASET_THRESHOLD) {
+    const tsv = await dataToCSVAsync(selectedData, state.columns, { includeHeaders: false, columnSeparator: '\t' });
+    await navigator.clipboard.writeText(tsv);
+    return true;
+  }
+
+  return copyToClipboard(selectedData as any, state.columns, { includeHeaders: false });
+}
+
+export async function copyAll(includeHeaders: boolean = true) {
+  if (!pluginApi) return false;
+  const state = pluginApi.getState();
+  return copyToClipboard(state.processedData as any, state.columns, { includeHeaders });
+}
+
+// Lightweight hook to consume export helpers in React components
+export function useExport() {
   return {
     exportToCsv,
     copySelected,

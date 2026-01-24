@@ -275,6 +275,23 @@ export interface GridState<TData extends RowData = RowData> {
   isLoading: boolean;
   /** Quick filter text */
   quickFilterText: string;
+  /** Grouping state */
+  grouping?: {
+    groupBy: string[];
+    expandedGroups?: string[];
+  };
+  /** Cell editing state */
+  editing?: {
+    isEditing: boolean;
+    editingCell: { rowIndex: number; colId: string } | null;
+    originalValue?: CellValue;
+  };
+  /** Undo/Redo state */
+  undoRedo?: {
+    undoStack: { rowIndex: number; colId: string; oldValue: CellValue; newValue: CellValue }[];
+    redoStack: { rowIndex: number; colId: string; oldValue: CellValue; newValue: CellValue }[];
+    maxSize?: number;
+  };
 }
 
 // ============================================================================
@@ -336,10 +353,26 @@ export interface GridApi<TData extends RowData = RowData> {
   scrollToRow: (rowIndex: number, behavior?: ScrollBehavior) => void;
   scrollToColumn: (colId: string) => void;
   scrollToCell: (rowIndex: number, colId: string) => void;
+  /** Grouping helpers */
+  setGroupColumns?: (cols: string[]) => void;
+  getGroupColumns?: () => string[];
+  toggleGroupExpand?: (path: string[] | string) => void;
+  expandAllGroups?: () => void;
+  collapseAllGroups?: () => void;
+  /** Subscribe to state changes; returns an unsubscribe function */
+  subscribe: (listener: (state: GridState<TData>) => void) => () => void;
+  /** (Internal) used by provider to notify listeners when state changes */
+  notifyStateChange?: (state: GridState<TData>) => void;
   
   // Cell editing
   startEditing: (rowIndex: number, colId: string) => void;
   stopEditing: (cancel?: boolean) => void;
+  /** Apply an edit programmatically (rowIndex, colId, oldValue, newValue) */
+  applyEdit: (rowIndex: number, colId: string, oldValue: CellValue | null, newValue: CellValue | null) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   
   // Export
   exportToCsv: (params?: ExportParams) => void;
@@ -588,7 +621,7 @@ export interface StatusBarPluginConfig {
 /** Plugin interface */
 export interface GridPlugin<TData extends RowData = RowData> {
   name: PluginName;
-  init?: (api: GridApi<TData>, config?: unknown) => void;
+  init?: (api: GridApi<TData>, config?: any) => void;
   destroy?: () => void;
   onStateChange?: (state: GridState<TData>) => void;
   headerComponent?: React.ComponentType<unknown>;
@@ -650,6 +683,8 @@ export interface WarperGridProps<TData extends RowData = RowData> {
   
   /** Custom styles */
   style?: CSSProperties;
+  /** Global cell style applied to all cells (overrides column.cellStyle if provided) */
+  cellStyle?: CSSProperties | ((params: CellClassParams<TData>) => CSSProperties);
   
   /** Get row id for React keys */
   getRowId?: (data: TData, index: number) => string | number;

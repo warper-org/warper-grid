@@ -241,12 +241,12 @@ function GridCell<TData extends RowData>({
             setValue: () => {},
           };
           // Check if it's a class component by looking for prototype.isReactComponent
-          if (Renderer.prototype && Renderer.prototype.isReactComponent) {
-            const Component = Renderer as React.ComponentClass<typeof rendererParams>;
+          if ((Renderer as any).prototype && (Renderer as any).prototype.isReactComponent) {
+            const Component = Renderer as unknown as React.ComponentClass<typeof rendererParams>;
             return <Component {...rendererParams} />;
           }
           // Otherwise treat it as a function (stateless component or render function)
-          return (Renderer as (params: typeof rendererParams) => React.ReactNode)(rendererParams);
+          return (Renderer as unknown as (params: typeof rendererParams) => React.ReactNode)(rendererParams);
         })()
       ) : (
         <span className="truncate">

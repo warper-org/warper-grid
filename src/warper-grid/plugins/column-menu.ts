@@ -226,15 +226,15 @@ export function getColumnVisibilityItems<TData extends RowData = RowData>(
 export function createColumnMenuPlugin<TData extends RowData = RowData>(
   config?: ColumnMenuPluginConfig<TData>
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  let pluginApi: GridApi<TData> | null = null;
 
   return {
     name: 'columnMenu',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

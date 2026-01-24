@@ -14,6 +14,7 @@ import {
 import { useDebouncedCallback } from 'use-debounce';
 import { useVirtualizer } from '@itsmeadarsh/warper';
 import { cn } from '@/lib/utils';
+import { evaluateFormula } from './utils/formula';
 import {
   gridReducer,
   createInitialState,
@@ -38,7 +39,9 @@ import type {
   PluginConfig,
   ComputedColumn,
   CellRendererParams,
+  ColumnPin,
 } from './types';
+import { parseInputValue } from './plugins/cell-editing';
 import type { ContextMenuState } from './plugins/context-menu';
 import type { CellPosition } from './plugins/cell-selection';
 
@@ -59,6 +62,7 @@ interface GridCellProps<TData extends RowData> {
   onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
   onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
   onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  globalCellStyle?: WarperGridProps<TData>['cellStyle'];
 }
 
 function GridCellInner<TData extends RowData>({
@@ -74,6 +78,7 @@ function GridCellInner<TData extends RowData>({
   onCellDoubleClick,
   onCellMouseDown,
   onCellMouseEnter,
+  globalCellStyle,
 }: GridCellProps<TData>) {
   const value = col.field
     ? (rowData as Record<string, unknown>)[col.field as string] as CellValue
@@ -89,9 +94,13 @@ function GridCellInner<TData extends RowData>({
     ? col.cellClass({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
     : col.cellClass;
 
-  const cellStyle = typeof col.cellStyle === 'function'
+  const colCellStyle = typeof col.cellStyle === 'function'
     ? col.cellStyle({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
     : col.cellStyle;
+  const globalStyle = typeof globalCellStyle === 'function'
+    ? globalCellStyle({ value, data: rowData, column: col, columnIndex: colIndex, rowIndex, api })
+    : globalCellStyle;
+  const cellStyle = { ...(colCellStyle || {}), ...(globalStyle || {}) } as React.CSSProperties;
 
   return (
     <div
@@ -100,13 +109,17 @@ function GridCellInner<TData extends RowData>({
         cellClass,
         isSelected && 'warper-grid-cell--selected',
         isActive && 'warper-grid-cell--active',
-        isCut && 'warper-grid-cell--cut'
+        isCut && 'warper-grid-cell--cut',
+        col.pinned === 'left' && 'warper-grid-cell--pinned-left',
+        col.pinned === 'right' && 'warper-grid-cell--pinned-right'
       )}
       style={{
         width: col.computedWidth,
         minWidth: col.minWidth,
         maxWidth: col.maxWidth,
         textAlign: col.align || 'left',
+        /* Pinned columns are not sticky anymore — they appear inline in the column order */
+        ...(cellStyle),
         ...cellStyle,
       }}
       onClick={onCellClick ? (e) => { e.stopPropagation(); onCellClick(rowIndex, col.id, value, rowData, e); } : undefined}
@@ -127,9 +140,40 @@ function GridCellInner<TData extends RowData>({
           setValue: () => {},
         })
       ) : (
-        <span className="truncate">
-          {displayValue != null ? String(displayValue) : ''}
-        </span>
+        // Show editor if this cell is currently being edited
+        api.getState().editing?.isEditing && api.getState().editing?.editingCell?.rowIndex === rowIndex && api.getState().editing?.editingCell?.colId === col.id ? (
+          <input
+            autoFocus
+            className="w-full h-full px-2"
+            defaultValue={displayValue != null ? String(displayValue) : ''}
+            onBlur={(e) => {
+              const newVal = e.target.value;
+              // commit via dispatch
+              const state = api.getState();
+              const colDef = state.columns[colIndex];
+              const parsed = parseInputValue(newVal, colDef as any);
+              // Handle formula vs literal
+              let commitValue: any = parsed;
+              if (typeof newVal === 'string' && newVal.trim().startsWith('=')) {
+                // Evaluate formula
+                commitValue = evaluateFormula(newVal, rowIndex, col.id, state.processedData, state.columns as any);
+              }
+              api.applyEdit?.(rowIndex, col.id, api.getState().editing?.originalValue, commitValue);
+              api.stopEditing();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                (e.target as HTMLInputElement).blur();
+              } else if (e.key === 'Escape') {
+                api.stopEditing?.(true);
+              }
+            }}
+          />
+        ) : (
+          <span className="truncate">
+            {displayValue != null ? String(displayValue) : ''}
+          </span>
+        )
       )}
     </div>
   );
@@ -160,6 +204,7 @@ interface GridRowProps<TData extends RowData> {
   onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
   onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
   onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  globalCellStyle?: WarperGridProps<TData>['cellStyle'];
 }
 
 function GridRowInner<TData extends RowData>({
@@ -180,7 +225,74 @@ function GridRowInner<TData extends RowData>({
   onCellDoubleClick,
   onCellMouseDown,
   onCellMouseEnter,
+  globalCellStyle,
 }: GridRowProps<TData>) {
+  // Render group rows differently, AG Grid style: put label in first visible column and show aggregations in other columns
+  if ((rowData as any).__isGroupRow) {
+    const g = rowData as any;
+    // choose label column as first non-hidden column
+    const labelColIndex = columns.findIndex(c => !c.hide);
+
+    return (
+      <div
+        className={cn('warper-grid-row warper-grid-group-row', striped && 'warper-grid-row--striped')}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          transform: `translateY(${offset}px)`,
+          height,
+          width: totalWidth,
+          display: 'flex',
+        }}
+        onClick={(e) => { if (onRowClick) onRowClick(rowIndex, rowData as any, e); }}
+      >
+        {columns.map((col, colIndex) => {
+          const isLabel = colIndex === labelColIndex;
+          const indent = isLabel ? Math.min(20 * (g.depth || 0), 320) : 0;
+
+          return (
+            <div
+              key={col.id}
+              className={cn('warper-grid-cell warper-grid-group-cell')}
+              style={{
+                width: col.computedWidth,
+                minWidth: col.minWidth,
+                maxWidth: col.maxWidth,
+                display: 'flex',
+                alignItems: 'center',
+                paddingLeft: isLabel ? 12 : 8,
+                textAlign: col.align || 'left',
+              }}
+              onClick={(e) => {
+                if (isLabel) {
+                  e.stopPropagation();
+                  if (api.toggleGroupExpand) api.toggleGroupExpand(g.path);
+                }
+              }}
+            >
+              {isLabel ? (
+                <div className="flex items-center gap-2 w-full">
+                  <div style={{ marginLeft: indent }} className="cursor-pointer select-none">
+                    {g.isExpanded ? '▾' : '▸'}
+                  </div>
+                  <div className="truncate">
+                    <strong className="mr-1">{g.groupColId}:</strong>
+                    {String(g.groupKey)} <span className="text-xs text-(--muted-foreground)">({g.leafCount})</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="ml-auto">
+                  {g.aggregations && g.aggregations[col.id] != null ? String(g.aggregations[col.id]) : ''}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -220,6 +332,7 @@ function GridRowInner<TData extends RowData>({
             onCellDoubleClick={onCellDoubleClick}
             onCellMouseDown={onCellMouseDown}
             onCellMouseEnter={onCellMouseEnter}
+            globalCellStyle={globalCellStyle}
           />
         );
       })}
@@ -280,6 +393,7 @@ function WarperGridInner<TData extends RowData>(
     getRowId,
     onCellClick,
     onCellDoubleClick,
+    cellStyle: globalCellStyle,
     onRowClick,
     onSelectionChanged,
     onSortChanged,
@@ -334,6 +448,8 @@ function WarperGridInner<TData extends RowData>(
 
   // Virtualizer ref for scrolling
   const scrollToIndexRef = useRef<((index: number, behavior?: ScrollBehavior) => void) | null>(null);
+  // Header scroll container ref (used to sync horizontal scrolling with body)
+  const headerScrollRef = useRef<HTMLDivElement | null>(null);
 
   // State ref for API
   const stateRef = useRef(state);
@@ -348,6 +464,18 @@ function WarperGridInner<TData extends RowData>(
     ),
     []
   );
+
+  // Notify plugins on every state update so plugins can react to edit/selection changes
+  useEffect(() => {
+    if (pluginManagerRef.current) {
+      try {
+        pluginManagerRef.current.notifyStateChange(state);
+      } catch (err) {
+        // swallow plugin errors to avoid breaking grid
+        console.error('Plugin onStateChange error:', err);
+      }
+    }
+  }, [state]);
 
   // Initialize plugin manager
   useEffect(() => {
@@ -509,25 +637,64 @@ function WarperGridInner<TData extends RowData>(
   // If 'All' is selected, hide pagination UI and always show all rows
   const showPagination = isPaginationEnabled && !isAllRows;
 
-  // Compute column widths (memoized)
+  // Compute column widths (memoized) and handle pinned columns
   const computedColumns = useMemo((): ComputedColumn<TData>[] => {
-    const visibleColumns = state.columns.filter(col => {
+    const allVisible = state.columns.filter(col => {
       const colState = state.columnState.get(col.id);
       return !(col.hide || colState?.hide);
     });
 
-    let totalOffset = 0;
-    return visibleColumns.map(col => {
+    const getPinned = (c: typeof allVisible[0]) => (state.columnState.get(c.id)?.pinned ?? c.pinned) as ColumnPin;
+
+    const leftPinned = allVisible.filter(c => getPinned(c) === 'left');
+    const rightPinned = allVisible.filter(c => getPinned(c) === 'right');
+    const normal = allVisible.filter(c => getPinned(c) !== 'left' && getPinned(c) !== 'right');
+
+    const leftComputed: ComputedColumn<TData>[] = [];
+    let leftOffset = 0;
+    for (const col of leftPinned) {
       const colState = state.columnState.get(col.id);
       const computedWidth = colState?.width ?? col.width ?? 150;
-      const computed: ComputedColumn<TData> = {
-        ...col,
-        computedWidth,
-        offsetLeft: totalOffset,
-      };
-      totalOffset += computedWidth;
-      return computed;
-    });
+      leftComputed.push({ ...col, computedWidth, offsetLeft: leftOffset });
+      leftOffset += computedWidth;
+    }
+
+    const normalComputed: ComputedColumn<TData>[] = [];
+    let normalOffset = leftOffset;
+    for (const col of normal) {
+      const colState = state.columnState.get(col.id);
+      const computedWidth = colState?.width ?? col.width ?? 150;
+      normalComputed.push({ ...col, computedWidth, offsetLeft: normalOffset });
+      normalOffset += computedWidth;
+    }
+
+    // Right pinned: compute widths first, we'll calculate their offsetLeft from the right edge
+    const rightComputed: ComputedColumn<TData>[] = [];
+    let rightTotalWidth = 0;
+    for (let i = rightPinned.length - 1; i >= 0; i--) {
+      const col = rightPinned[i];
+      const colState = state.columnState.get(col.id);
+      const computedWidth = colState?.width ?? col.width ?? 150;
+      rightComputed.unshift({ ...col, computedWidth, offsetLeft: -1 }); // placeholder
+      rightTotalWidth += computedWidth;
+    }
+
+    // Merge to compute total width
+    const merged = [...leftComputed, ...normalComputed, ...rightComputed];
+    const totalWidthCalculated = merged.reduce((s, c) => s + c.computedWidth, 0);
+
+    // Assign offsetLeft and offsetRight for right pinned columns from right edge
+    let accFromRight = 0;
+    for (let i = rightComputed.length - 1; i >= 0; i--) {
+      const c = rightComputed[i];
+      accFromRight += c.computedWidth;
+      // place from left = totalWidth - accFromRight
+      (c as ComputedColumn<TData>).offsetLeft = totalWidthCalculated - accFromRight;
+      // offsetRight = accFromRight - width
+      (c as any).offsetRight = accFromRight - c.computedWidth;
+    }
+
+    return [...leftComputed, ...normalComputed, ...rightComputed];
   }, [state.columns, state.columnState]);
 
   // Total row width
@@ -557,10 +724,54 @@ function WarperGridInner<TData extends RowData>(
     scrollToIndexRef.current = scrollToIndex;
   }, [scrollToIndex]);
 
-  // Keyboard shortcuts: Ctrl/Cmd + Shift + A to toggle All/Restore page size
+  // Sync horizontal scroll between body and header so columns stay aligned
+  useEffect(() => {
+    // scrollElementRef from the virtualizer may be either a RefObject or a callback ref.
+    // Handle both cases by trying .current first, then falling back to querying the DOM.
+    const body = (scrollElementRef as any)?.current ?? (typeof scrollElementRef === 'function' ? document.querySelector('.warper-grid-body') : null) as HTMLDivElement | null;
+    const header = headerScrollRef?.current ?? document.querySelector('.warper-grid-header-scroll') as HTMLDivElement | null;
+    if (!body || !header) return;
+
+    let ticking = false;
+    const onBodyScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          if (header.scrollLeft !== body.scrollLeft) header.scrollLeft = body.scrollLeft;
+          ticking = false;
+        });
+      }
+    };
+
+    const onHeaderScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          if (body.scrollLeft !== header.scrollLeft) body.scrollLeft = header.scrollLeft;
+          ticking = false;
+        });
+      }
+    };
+
+    body.addEventListener('scroll', onBodyScroll, { passive: true });
+    header.addEventListener('scroll', onHeaderScroll, { passive: true });
+
+    return () => {
+      body.removeEventListener('scroll', onBodyScroll);
+      header.removeEventListener('scroll', onHeaderScroll);
+    };
+  }, [scrollElementRef, headerScrollRef]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // If the user is typing in an input/textarea/contentEditable, ignore global shortcuts
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) return;
+
       const mod = e.ctrlKey || e.metaKey;
+
+      // Toggle All/Restore page size: Ctrl+Shift+A
       if (mod && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         const totalRowsCount = state.data.length;
@@ -573,11 +784,40 @@ function WarperGridInner<TData extends RowData>(
           // Set All
           api.setPageSize(totalRowsCount);
         }
+        return;
+      }
+
+      // Undo/Redo: Ctrl+Z / Ctrl+Y
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        api.undo?.();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        api.redo?.();
+        return;
+      }
+
+      // Start editing: Enter or F2 when a cell is active
+      if ((e.key === 'Enter' || e.key === 'F2') && cellSelection.activeCell) {
+        e.preventDefault();
+        api.startEditing(cellSelection.activeCell.rowIndex, cellSelection.activeCell.colId);
+        return;
+      }
+
+      // If editing, confirm or cancel with Enter/Escape
+      if (api.getState().editing?.isEditing) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          dispatch({ type: 'CANCEL_EDITING' });
+          return;
+        }
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [api, state.data.length]);
+  }, [api, state.data.length, cellSelection.activeCell, dispatch]);
 
   // Event callbacks (stable references)
   const handleRowClick = useCallback((rowIndex: number, data: TData, event: React.MouseEvent) => {
@@ -600,6 +840,8 @@ function WarperGridInner<TData extends RowData>(
       event,
       api,
     });
+
+
   }, [onCellClick, api]);
 
   const handleCellDoubleClick = useCallback((rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => {
@@ -612,6 +854,7 @@ function WarperGridInner<TData extends RowData>(
       event,
       api,
     });
+    api.startEditing(rowIndex, colId);
   }, [onCellDoubleClick, api]);
 
   // Cell selection handlers
@@ -764,6 +1007,10 @@ function WarperGridInner<TData extends RowData>(
   // Keyboard handler for cell navigation and actions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If typing in an input/textarea/contentEditable, don't intercept keystrokes
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) return;
+
       // Only handle if we have selected cells
       if (cellSelection.selectedCells.size === 0 && !cellSelection.activeCell) return;
       
@@ -908,8 +1155,18 @@ function WarperGridInner<TData extends RowData>(
           break;
         case 'Enter':
           e.preventDefault();
-          // Move down (or start editing in the future)
-          newRowIdx = Math.min(pageEnd, currentRowIdx + 1);
+          // If editing is enabled (not currently editing), start editing the active cell; otherwise move down after editing
+          if (!api.getState().editing?.isEditing) {
+            api.startEditing(currentRowIdx, computedColumns[currentColIdx]?.id || '');
+          } else {
+            newRowIdx = Math.min(pageEnd, currentRowIdx + 1);
+          }
+          break;
+        case 'F2':
+          e.preventDefault();
+          if (cellSelection.activeCell) {
+            api.startEditing(cellSelection.activeCell.rowIndex, cellSelection.activeCell.colId);
+          }
           break;
         case 'Home':
           e.preventDefault();
@@ -1118,6 +1375,7 @@ function WarperGridInner<TData extends RowData>(
           totalWidth={totalWidth}
           headerHeight={headerHeight}
           api={api}
+          headerScrollRef={headerScrollRef}
         />
         <div className="warper-grid-empty">
           {emptyComponent || emptyMessage}
@@ -1143,6 +1401,7 @@ function WarperGridInner<TData extends RowData>(
           totalWidth={totalWidth}
           headerHeight={headerHeight}
           api={api}
+          headerScrollRef={headerScrollRef}
         />
 
         {/* Grid Body - Virtualized */}
@@ -1197,6 +1456,7 @@ function WarperGridInner<TData extends RowData>(
                     selectedCells={cellSelection.selectedCells}
                     activeCell={cellSelection.activeCell}
                     cutCells={clipboardData?.isCut ? clipboardData.cells : undefined}
+                    globalCellStyle={globalCellStyle}
                     onRowClick={onRowClick ? handleRowClick : undefined}
                     onCellClick={handleCellClick}
                     onCellDoubleClick={onCellDoubleClick ? handleCellDoubleClick : undefined}

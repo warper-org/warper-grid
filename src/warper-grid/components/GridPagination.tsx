@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { usePagination, getPageNumbers } from '../plugins/pagination';
+import { usePagination } from '../plugins/pagination';
 import type { RowData, GridApi } from '../types';
 
 // ============================================================================
@@ -18,7 +18,6 @@ export function GridPagination<TData extends RowData>({
   const pagination = usePagination(api);
   // Use actual total row count (pre-filter) for "All" option
   const totalRows = api.getRowCount();
-  const displayedRows = api.getDisplayedRowCount();
 
   // Adapt page sizes to dataset size and current selection
   let availableSizes = pageSizes.filter(size => size < totalRows);

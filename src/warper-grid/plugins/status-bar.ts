@@ -168,9 +168,9 @@ export function getDefaultStatusPanels<TData extends RowData = RowData>(): Statu
 export function createStatusBarPlugin<TData extends RowData = RowData>(
   config?: StatusBarPluginConfig<TData>
 ): GridPlugin<TData> {
-  let api: GridApi<TData> | null = null;
+  let pluginApi: GridApi<TData> | null = null;
   
-  const pluginConfig: StatusBarPluginConfig<TData> = {
+  const _pluginConfig: StatusBarPluginConfig<TData> = {
     enabled: true,
     position: 'bottom',
     panels: getDefaultStatusPanels(),
@@ -180,10 +180,10 @@ export function createStatusBarPlugin<TData extends RowData = RowData>(
   return {
     name: 'statusBar',
     init: (gridApi) => {
-      api = gridApi;
+      pluginApi = gridApi;
     },
     destroy: () => {
-      api = null;
+      pluginApi = null;
     },
   };
 }

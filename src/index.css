@@ -144,6 +144,52 @@
     @apply flex items-center px-3 py-2 text-sm font-semibold text-[var(--foreground)] select-none;
     @apply border-r border-[var(--border)] last:border-r-0;
     cursor: grab;
+    position: relative;
+    /* Stronger partition visibility */
+    border-right-width: 1px;
+    border-right-color: rgba(255,255,255,0.06);
+  }
+
+  /* Drag target indicators (insertion caret) */
+  .warper-grid-header-cell.drag-over-left::before,
+  .warper-grid-header-cell.drag-over-right::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+    z-index: 10;
+  }
+  .warper-grid-header-cell.drag-over-left::before {
+    left: 0;
+    transform: translateX(-50%);
+  }
+  .warper-grid-header-cell.drag-over-right::after {
+    right: 0;
+    transform: translateX(50%);
+  }
+
+  /* Ghost style for drag image (applied to cloned element) */
+  .drag-ghost {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    transform: scale(0.98);
+  }
+
+  /* Partition between header and body */
+  .warper-grid-header {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .warper-grid-cell {
+    @apply flex items-center px-3 py-2 text-sm text-[var(--foreground)];
+    @apply border-r border-[var(--border)] last:border-r-0;
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+    cursor: cell;
+    /* Improved partition visibility */
+    border-right-width: 1px;
+    border-right-color: rgba(0,0,0,0.2);
   }
 
   .warper-grid-header-cell.dragging {
@@ -160,6 +206,26 @@
 
   .warper-grid-body {
     @apply flex-1 overflow-auto;
+    /* Hide scrollbars while keeping scroll functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  /* WebKit horizontal/vertical scrollbar hiding */
+  .warper-grid-body::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    display: none;
+  }
+  .warper-grid-header-scroll {
+    /* Hide header scrollbars (horizontal only) */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .warper-grid-header-scroll::-webkit-scrollbar {
+    height: 0px;
+    display: none;
   }
 
   .warper-grid-row {
@@ -193,6 +259,18 @@
     -webkit-user-select: text;
   }
 
+  /* Ensure cell editor input is interactive and visible */
+  .warper-grid-cell--editing input {
+    pointer-events: auto;
+    caret-color: var(--primary);
+    z-index: 5;
+    position: relative;
+    background: transparent;
+    color: inherit;
+    border: none;
+    outline: none;
+  }
+
   /* Resizer Handle */
   .warper-grid-resizer {
     @apply absolute right-0 top-0 h-full w-1 cursor-col-resize;
@@ -201,6 +279,13 @@
 
   .warper-grid-resizer--resizing {
     @apply bg-[var(--primary)];
+  }
+
+  /* Pinned column helper */
+  .warper-grid-cell--pinned-left,
+  .warper-grid-cell--pinned-right {
+    @apply bg-[var(--background)];
+    @apply border-r border-[var(--border)];
   }
 
   /* Pagination */
@@ -224,11 +309,11 @@
 
   /* Pinned Columns */
   .warper-grid-pinned-left {
-    @apply sticky left-0 z-10 bg-[var(--card)] shadow-[2px_0_4px_rgba(0,0,0,0.1)];
+    @apply bg-[var(--card)] shadow-[2px_0_4px_rgba(0,0,0,0.1)];
   }
 
   .warper-grid-pinned-right {
-    @apply sticky right-0 z-10 bg-[var(--card)] shadow-[-2px_0_4px_rgba(0,0,0,0.1)];
+    @apply bg-[var(--card)] shadow-[-2px_0_4px_rgba(0,0,0,0.1)];
   }
 
   /* ===== Context Menu ===== */
@@ -522,6 +607,22 @@
   .warper-group-aggregation {
     @apply text-[var(--muted-foreground)] font-mono text-xs;
   }
+
+  .warper-grid-group-cell {
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+  }
+  .warper-grid-group-cell strong { font-weight: 600; }
+
+  .group-panel--over {
+    outline: 2px dashed rgba(16,185,129,0.4);
+    background: rgba(16,185,129,0.02);
+  }
+
+  /* Group panel */
+  .group-panel { display:flex; align-items:center; gap:8px; padding:6px 0; }
+  .group-panel .pill { padding:6px 8px; border-radius:6px; background:var(--card); border:1px solid var(--border); display:inline-flex; gap:6px; align-items:center }
+  .warper-grid-group-row { background: linear-gradient(180deg, rgba(0,0,0,0.02), transparent); border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .warper-grid-group-row .px-3 strong { font-weight: 600; }
 
   /* ===== Master-Detail ===== */
   .warper-master-row {
