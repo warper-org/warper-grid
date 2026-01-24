@@ -141,9 +141,9 @@ export function usePagination<TData extends RowData>(api: GridApi<TData>) {
   const page = api.getPage();
   const pageSize = api.getPageSize();
 
-  // If 'All' (pageSize equals total rows) use totalRows for pagination calculations
-  const totalRowsForInfo = pageSize >= totalRows ? totalRows : displayedRows;
-  const info = getPaginationInfo(totalRowsForInfo, page, pageSize);
+  // Compute effective pageSize and use full totalRows for pagination calculations
+  const effectivePageSize = (pageSize === 0 || pageSize >= totalRows) ? totalRows : pageSize;
+  const info = getPaginationInfo(totalRows, page, effectivePageSize);
   
   return {
     ...info,

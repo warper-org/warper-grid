@@ -667,6 +667,9 @@ export interface WarperGridProps<TData extends RowData = RowData> {
   
   /** Grid ready callback with API */
   onGridReady?: (api: GridApi<TData>) => void;
+  
+  /** Maximum number of rows to process client-side for filtering/sorting (default: 10000) */
+  maxClientSideRows?: number;
 }
 
 // ============================================================================

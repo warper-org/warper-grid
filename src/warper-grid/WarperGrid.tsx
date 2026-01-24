@@ -286,6 +286,7 @@ function WarperGridInner<TData extends RowData>(
     onFilterChanged,
     onPageChanged,
     onGridReady,
+    maxClientSideRows = 10000,
   } = props;
 
   // Initialize state
@@ -353,6 +354,18 @@ function WarperGridInner<TData extends RowData>(
     pluginManagerRef.current!.init(api);
   }, [api]);
 
+  // Warn about large datasets without pagination
+  useEffect(() => {
+    const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
+    if (state.data.length > maxClientSideRows && !isPaginationEnabled) {
+      console.warn(
+        `WarperGrid: Large dataset detected (${state.data.length} rows). ` +
+        'For better performance, consider enabling the pagination plugin. ' +
+        'Client-side processing is limited to avoid browser crashes.'
+      );
+    }
+  }, [state.data.length, maxClientSideRows, api]);
+
   // Expose ref methods
   useImperativeHandle(ref, () => ({
     api,
@@ -406,11 +419,35 @@ function WarperGridInner<TData extends RowData>(
   const debouncedProcessData = useDebouncedCallback(() => {
     const hasFilters = state.filterModel.length > 0 || state.quickFilterText;
     const hasSorts = state.sortModel.length > 0;
+
+    // Check if pagination is enabled
+    const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
+
+    // If no filters/sorts, processedData should reflect the full dataset (not a page slice).
+    // Pagination will be applied separately when rendering via paginatedData.
     if (!hasFilters && !hasSorts) {
       setProcessedData(state.data);
       return;
     }
-    let result = state.data;
+
+    let dataToProcess = state.data;
+    if (isPaginationEnabled) {
+      // For paginated mode, process only the current page to avoid large array operations
+      dataToProcess = paginateData(state.data, state.page, state.pageSize);
+    } else {
+      // For large datasets without pagination, skip processing
+      if (state.data.length > maxClientSideRows) {
+        console.warn(
+          `WarperGrid: Dataset has ${state.data.length} rows, exceeding maxClientSideRows (${maxClientSideRows}). ` +
+          'Client-side filtering and sorting are disabled for performance. ' +
+          'Consider using server-side processing or pagination for large datasets.'
+        );
+        setProcessedData(state.data);
+        return;
+      }
+    }
+
+    let result = dataToProcess;
     if (hasFilters) {
       const getRowValues = (row: TData): CellValue[] => {
         return state.columns.map(col => getColumnValue(row, col.id));
@@ -437,7 +474,7 @@ function WarperGridInner<TData extends RowData>(
   useEffect(() => {
     debouncedProcessData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue]);
+  }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue, state.page, state.pageSize]);
 
 
   // Sync processedData into grid state for plugins that read state.processedData
@@ -455,19 +492,19 @@ function WarperGridInner<TData extends RowData>(
   // Intelligent rendering: use paginated data if pagination is enabled, else full data
   const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
   const paginatedData = useMemo(() => {
-    if (!isPaginationEnabled) {
-      return processedData;
-    }
+    if (!isPaginationEnabled) return processedData;
+    // If 'All' is selected, return all processed rows
+    if (state.pageSize === 0 || state.pageSize >= processedData.length) return processedData;
     return paginateData(processedData, state.page, state.pageSize);
   }, [processedData, state.page, state.pageSize, isPaginationEnabled]);
 
 
   // If 'All' is selected, treat as infinite scroll over the full dataset (use total rows)
-  const totalRowsCount = state.data.length;
-  const isAllRows = isPaginationEnabled && state.pageSize >= totalRowsCount;
-  // For non-all, virtualRows is the paginated slice; for all, we'll source directly from state.data
-  const virtualRows = paginatedData;
-  const virtualItemCount = isAllRows ? totalRowsCount : paginatedData.length;
+  const totalRowsCount = processedData.length;
+  const isAllRows = isPaginationEnabled && (state.pageSize === 0 || state.pageSize >= totalRowsCount);
+  // If 'All' is selected, show all processed rows; otherwise, show only the paginated slice
+  const virtualRows = isPaginationEnabled && !isAllRows ? paginatedData : processedData;
+  const virtualItemCount = virtualRows.length;
 
   // If 'All' is selected, hide pagination UI and always show all rows
   const showPagination = isPaginationEnabled && !isAllRows;
@@ -704,7 +741,8 @@ function WarperGridInner<TData extends RowData>(
     // Build TSV data
     const rows: string[] = [];
     for (let r = minRow; r <= maxRow; r++) {
-      const rowData = paginatedData[r];
+      // Use processedData (global indices) when building TSV
+      const rowData = processedData[r];
       if (!rowData) continue;
       
       const rowValues: string[] = [];
@@ -721,7 +759,7 @@ function WarperGridInner<TData extends RowData>(
     }
     
     return rows.join('\n');
-  }, [cellSelection.selectedCells, computedColumns, paginatedData]);
+  }, [cellSelection.selectedCells, computedColumns, processedData]);
 
   // Keyboard handler for cell navigation and actions
   useEffect(() => {
@@ -744,7 +782,7 @@ function WarperGridInner<TData extends RowData>(
           const cellData = new Map<string, CellValue>();
           cellSelection.selectedCells.forEach(key => {
             const [row, col] = key.split(':');
-            const rowData = paginatedData[parseInt(row)];
+            const rowData = processedData[parseInt(row)];
             const column = computedColumns.find(c => c.id === col);
             if (rowData && column?.field) {
               cellData.set(key, (rowData as Record<string, unknown>)[column.field as string] as CellValue);
@@ -767,7 +805,7 @@ function WarperGridInner<TData extends RowData>(
           const cellData = new Map<string, CellValue>();
           cellSelection.selectedCells.forEach(key => {
             const [row, col] = key.split(':');
-            const rowData = paginatedData[parseInt(row)];
+            const rowData = processedData[parseInt(row)];
             const column = computedColumns.find(c => c.id === col);
             if (rowData && column?.field) {
               cellData.set(key, (rowData as Record<string, unknown>)[column.field as string] as CellValue);
@@ -786,7 +824,10 @@ function WarperGridInner<TData extends RowData>(
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         const allCells = new Set<string>();
-        for (let r = 0; r < paginatedData.length; r++) {
+        // If pagination is enabled, select only the current page rows; otherwise select all displayed rows
+        const pageStart = (isPaginationEnabled && !isAllRows) ? state.page * state.pageSize : 0;
+        const pageEnd = (isPaginationEnabled && !isAllRows) ? Math.min(processedData.length - 1, pageStart + state.pageSize - 1) : processedData.length - 1;
+        for (let r = pageStart; r <= pageEnd; r++) {
           for (const col of computedColumns) {
             allCells.add(`${r}:${col.id}`);
           }
@@ -794,7 +835,7 @@ function WarperGridInner<TData extends RowData>(
         setCellSelection(prev => ({
           ...prev,
           selectedCells: allCells,
-          anchorCell: { rowIndex: 0, colId: computedColumns[0]?.id || '' },
+          anchorCell: { rowIndex: pageStart, colId: computedColumns[0]?.id || '' },
         }));
         return;
       }
@@ -823,15 +864,19 @@ function WarperGridInner<TData extends RowData>(
       // Arrow key navigation
       let newRowIdx = currentRowIdx;
       let newColIdx = currentColIdx;
-      
+
+      // Compute page bounds for navigation when pagination is enabled
+      const pageStart = (isPaginationEnabled && !isAllRows) ? state.page * state.pageSize : 0;
+      const pageEnd = (isPaginationEnabled && !isAllRows) ? Math.min(processedData.length - 1, pageStart + state.pageSize - 1) : processedData.length - 1;
+
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          newRowIdx = Math.max(0, currentRowIdx - 1);
+          newRowIdx = Math.max(pageStart, currentRowIdx - 1);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 1);
+          newRowIdx = Math.min(pageEnd, currentRowIdx + 1);
           break;
         case 'ArrowLeft':
           e.preventDefault();
@@ -847,7 +892,7 @@ function WarperGridInner<TData extends RowData>(
             // Move left, or up and to last column
             if (currentColIdx > 0) {
               newColIdx = currentColIdx - 1;
-            } else if (currentRowIdx > 0) {
+            } else if (currentRowIdx > pageStart) {
               newRowIdx = currentRowIdx - 1;
               newColIdx = computedColumns.length - 1;
             }
@@ -855,7 +900,7 @@ function WarperGridInner<TData extends RowData>(
             // Move right, or down and to first column
             if (currentColIdx < computedColumns.length - 1) {
               newColIdx = currentColIdx + 1;
-            } else if (currentRowIdx < paginatedData.length - 1) {
+            } else if (currentRowIdx < pageEnd) {
               newRowIdx = currentRowIdx + 1;
               newColIdx = 0;
             }
@@ -864,7 +909,7 @@ function WarperGridInner<TData extends RowData>(
         case 'Enter':
           e.preventDefault();
           // Move down (or start editing in the future)
-          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 1);
+          newRowIdx = Math.min(pageEnd, currentRowIdx + 1);
           break;
         case 'Home':
           e.preventDefault();
@@ -878,7 +923,7 @@ function WarperGridInner<TData extends RowData>(
         case 'End':
           e.preventDefault();
           if (e.ctrlKey || e.metaKey) {
-            newRowIdx = paginatedData.length - 1;
+            newRowIdx = processedData.length - 1;
             newColIdx = computedColumns.length - 1;
           } else {
             newColIdx = computedColumns.length - 1;
@@ -886,11 +931,11 @@ function WarperGridInner<TData extends RowData>(
           break;
         case 'PageUp':
           e.preventDefault();
-          newRowIdx = Math.max(0, currentRowIdx - 20);
+          newRowIdx = Math.max(pageStart, currentRowIdx - 20);
           break;
         case 'PageDown':
           e.preventDefault();
-          newRowIdx = Math.min(paginatedData.length - 1, currentRowIdx + 20);
+          newRowIdx = Math.min(pageEnd, currentRowIdx + 20);
           break;
         default:
           return; // Don't update selection for other keys
@@ -1130,11 +1175,10 @@ function WarperGridInner<TData extends RowData>(
                 const rowData = isAllRows ? state.data[virtualIdx] : virtualRows[virtualIdx];
                 if (!rowData) return null;
 
-                // Compute the global row index for selection, etc.
-                const globalRowIndex = isAllRows
-                  ? virtualIdx
-                  : (isPaginationEnabled ? state.page * state.pageSize + virtualIdx : virtualIdx);
+                // Compute the global index into processedData (used for selection and APIs)
+                const globalRowIndex = isAllRows ? virtualIdx : (isPaginationEnabled ? state.page * state.pageSize + virtualIdx : virtualIdx);
 
+                // Row key: allow user-supplied getRowId, pass global index
                 const rowId = getRowId ? getRowId(rowData, globalRowIndex) : globalRowIndex;
 
                 return (
