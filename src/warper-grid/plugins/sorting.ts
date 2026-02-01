@@ -9,41 +9,60 @@ import type {
 } from '../types';
 
 // ============================================================================
-// Sorting Utilities
+// Sorting Utilities - Performance Optimized
 // ============================================================================
 
+// Pre-allocated collator for string comparison (reused across sorts)
+const stringCollator = new Intl.Collator(undefined, { 
+  sensitivity: 'base', 
+  numeric: true 
+});
+
 /**
- * Default comparator for sorting values
+ * Default comparator for sorting values - Optimized for performance
+ * Uses type-specific fast paths and pre-allocated collator
  */
 export function defaultComparator(valueA: CellValue, valueB: CellValue): number {
-  // Handle null/undefined
-  if (valueA == null && valueB == null) return 0;
-  if (valueA == null) return 1;
-  if (valueB == null) return -1;
+  // Fast path: identical values
+  if (valueA === valueB) return 0;
+  
+  // Handle null/undefined - use nullish coalescing for speed
+  const aIsNull = valueA == null;
+  const bIsNull = valueB == null;
+  if (aIsNull && bIsNull) return 0;
+  if (aIsNull) return 1;
+  if (bIsNull) return -1;
 
-  // Handle dates
+  // Type-specific fast paths using typeof (faster than instanceof for primitives)
+  const typeA = typeof valueA;
+  const typeB = typeof valueB;
+  
+  // Numbers - most common case, optimized first
+  if (typeA === 'number' && typeB === 'number') {
+    return (valueA as number) - (valueB as number);
+  }
+
+  // Booleans
+  if (typeA === 'boolean' && typeB === 'boolean') {
+    return (valueA as boolean) === (valueB as boolean) ? 0 : (valueA as boolean) ? -1 : 1;
+  }
+  
+  // Strings - use pre-allocated collator
+  if (typeA === 'string' && typeB === 'string') {
+    return stringCollator.compare(valueA as string, valueB as string);
+  }
+
+  // Handle dates - check constructor name for speed
   if (valueA instanceof Date && valueB instanceof Date) {
     return valueA.getTime() - valueB.getTime();
   }
 
-  // Handle numbers
-  if (typeof valueA === 'number' && typeof valueB === 'number') {
-    return valueA - valueB;
-  }
-
-  // Handle booleans
-  if (typeof valueA === 'boolean' && typeof valueB === 'boolean') {
-    return valueA === valueB ? 0 : valueA ? -1 : 1;
-  }
-
-  // Default to string comparison
-  const strA = String(valueA).toLowerCase();
-  const strB = String(valueB).toLowerCase();
-  return strA.localeCompare(strB);
+  // Fallback to string comparison with collator
+  return stringCollator.compare(String(valueA), String(valueB));
 }
 
 /**
- * Sort data by sort model
+ * Sort data by sort model - Optimized with pre-computation and reduced allocations
  */
 export function sortData<TData extends RowData>(
   data: TData[],
@@ -51,26 +70,66 @@ export function sortData<TData extends RowData>(
   getColumnValue: (row: TData, colId: string) => CellValue,
   getComparator?: (colId: string) => ((a: CellValue, b: CellValue, rowA: TData, rowB: TData) => number) | undefined
 ): TData[] {
-  if (sortModel.length === 0) {
+  // Early return for no sorting or empty data
+  if (sortModel.length === 0 || data.length === 0) {
     return data;
   }
 
-  return [...data].sort((a, b) => {
-    for (const { colId, sort } of sortModel) {
-      if (!sort) continue;
+  // Pre-compute comparators and directions to avoid repeated lookups
+  const sortConfig = sortModel
+    .filter(s => s.sort !== null)
+    .map(({ colId, sort }) => ({
+      colId,
+      direction: sort === 'asc' ? 1 : -1,
+      comparator: getComparator?.(colId) ?? defaultComparator,
+    }));
 
-      const valueA = getColumnValue(a, colId);
-      const valueB = getColumnValue(b, colId);
-      
-      const comparator = getComparator?.(colId) || defaultComparator;
-      const result = comparator(valueA, valueB, a, b);
-      
+  // Skip if no active sorts
+  if (sortConfig.length === 0) {
+    return data;
+  }
+
+  // For single-column sort, use optimized path
+  if (sortConfig.length === 1) {
+    const { colId, direction, comparator } = sortConfig[0];
+    
+    // Pre-extract values for better cache locality
+    const indexed = data.map((row, idx) => ({
+      row,
+      value: getColumnValue(row, colId),
+      idx,
+    }));
+    
+    indexed.sort((a, b) => {
+      const result = comparator(a.value, b.value, a.row, b.row);
+      return result * direction;
+    });
+    
+    return indexed.map(item => item.row);
+  }
+
+  // Multi-column sort with pre-extracted values
+  const indexed = data.map((row, idx) => {
+    const values: CellValue[] = new Array(sortConfig.length);
+    for (let i = 0; i < sortConfig.length; i++) {
+      values[i] = getColumnValue(row, sortConfig[i].colId);
+    }
+    return { row, values, idx };
+  });
+
+  indexed.sort((a, b) => {
+    for (let i = 0; i < sortConfig.length; i++) {
+      const { direction, comparator } = sortConfig[i];
+      const result = comparator(a.values[i], b.values[i], a.row, b.row);
       if (result !== 0) {
-        return sort === 'asc' ? result : -result;
+        return result * direction;
       }
     }
-    return 0;
+    // Stable sort: preserve original order for equal elements
+    return a.idx - b.idx;
   });
+
+  return indexed.map(item => item.row);
 }
 
 /**
@@ -124,14 +183,14 @@ export function updateSortModel(
 // Sorting Plugin
 // ============================================================================
 
-let pluginApi: GridApi<RowData> | null = null;
+let _pluginApi: GridApi<RowData> | null = null;
 let _pluginConfig: SortingPluginConfig = {};
 
 export const sortingPlugin: GridPlugin<RowData> = {
   name: 'sorting',
 
   init(api: GridApi<RowData>, config?: SortingPluginConfig) {
-    pluginApi = api;
+    _pluginApi = api;
     _pluginConfig = config || {};
     
     // Apply default sort if provided
@@ -141,7 +200,7 @@ export const sortingPlugin: GridPlugin<RowData> = {
   },
 
   destroy() {
-    pluginApi = null;
+    _pluginApi = null;
     _pluginConfig = {};
   },
 };

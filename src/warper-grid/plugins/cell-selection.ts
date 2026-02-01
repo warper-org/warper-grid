@@ -50,8 +50,30 @@ export interface CellSelectionPluginConfig {
 }
 
 // ============================================================================
-// Cell Selection Utilities
+// Cell Selection Utilities - Performance Optimized
 // ============================================================================
+
+// Cache for column order lookups
+let cachedColumnOrder: string[] | null = null;
+let cachedColumnIndexMap: Map<string, number> | null = null;
+
+/**
+ * Get column index map for O(1) lookups - with caching
+ */
+function getColumnIndexMap(columnOrder: string[]): Map<string, number> {
+  if (cachedColumnOrder === columnOrder && cachedColumnIndexMap) {
+    return cachedColumnIndexMap;
+  }
+  
+  const indexMap = new Map<string, number>();
+  for (let i = 0; i < columnOrder.length; i++) {
+    indexMap.set(columnOrder[i], i);
+  }
+  
+  cachedColumnOrder = columnOrder;
+  cachedColumnIndexMap = indexMap;
+  return indexMap;
+}
 
 /**
  * Normalize a range to ensure start <= end
@@ -66,17 +88,23 @@ export function normalizeRange(range: CellRange): CellRange {
 }
 
 /**
- * Check if a cell is within a range
+ * Check if a cell is within a range - Optimized with index map
  */
 export function isCellInRange(
   cell: CellPosition,
   range: CellRange,
   columnOrder: string[]
 ): boolean {
+  const indexMap = getColumnIndexMap(columnOrder);
   const normalized = normalizeRange(range);
-  const startColIndex = columnOrder.indexOf(normalized.startColId);
-  const endColIndex = columnOrder.indexOf(normalized.endColId);
-  const cellColIndex = columnOrder.indexOf(cell.colId);
+  
+  const startColIndex = indexMap.get(normalized.startColId);
+  const endColIndex = indexMap.get(normalized.endColId);
+  const cellColIndex = indexMap.get(cell.colId);
+  
+  if (startColIndex === undefined || endColIndex === undefined || cellColIndex === undefined) {
+    return false;
+  }
   
   const minCol = Math.min(startColIndex, endColIndex);
   const maxCol = Math.max(startColIndex, endColIndex);
@@ -90,34 +118,55 @@ export function isCellInRange(
 }
 
 /**
- * Check if a cell is in any of the ranges
+ * Check if a cell is in any of the ranges - Optimized with early return
  */
 export function isCellSelectedInRanges(
   cell: CellPosition,
   ranges: CellRange[],
   columnOrder: string[]
 ): boolean {
-  return ranges.some(range => isCellInRange(cell, range, columnOrder));
+  // Early return for common case
+  if (ranges.length === 0) return false;
+  
+  for (let i = 0; i < ranges.length; i++) {
+    if (isCellInRange(cell, ranges[i], columnOrder)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Get all cells in a range
+ * Get all cells in a range - Optimized with pre-allocation
  */
 export function getCellsInRange(
   range: CellRange,
   columnOrder: string[]
 ): CellPosition[] {
+  const indexMap = getColumnIndexMap(columnOrder);
   const normalized = normalizeRange(range);
-  const cells: CellPosition[] = [];
   
-  const startColIndex = columnOrder.indexOf(normalized.startColId);
-  const endColIndex = columnOrder.indexOf(normalized.endColId);
+  const startColIndex = indexMap.get(normalized.startColId);
+  const endColIndex = indexMap.get(normalized.endColId);
+  
+  if (startColIndex === undefined || endColIndex === undefined) {
+    return [];
+  }
+  
   const minCol = Math.min(startColIndex, endColIndex);
   const maxCol = Math.max(startColIndex, endColIndex);
   
+  const rowCount = normalized.endRow - normalized.startRow + 1;
+  const colCount = maxCol - minCol + 1;
+  const totalCells = rowCount * colCount;
+  
+  // Pre-allocate array
+  const cells: CellPosition[] = new Array(totalCells);
+  let idx = 0;
+  
   for (let row = normalized.startRow; row <= normalized.endRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
-      cells.push({ rowIndex: row, colId: columnOrder[col] });
+      cells[idx++] = { rowIndex: row, colId: columnOrder[col] };
     }
   }
   
@@ -125,7 +174,7 @@ export function getCellsInRange(
 }
 
 /**
- * Get values from cells in a range
+ * Get values from cells in a range - Optimized with pre-allocation
  */
 export function getRangeValues<TData extends RowData>(
   range: CellRange,
@@ -133,21 +182,32 @@ export function getRangeValues<TData extends RowData>(
   columnOrder: string[],
   getFieldValue: (row: TData, colId: string) => CellValue
 ): CellValue[][] {
+  const indexMap = getColumnIndexMap(columnOrder);
   const normalized = normalizeRange(range);
-  const values: CellValue[][] = [];
   
-  const startColIndex = columnOrder.indexOf(normalized.startColId);
-  const endColIndex = columnOrder.indexOf(normalized.endColId);
+  const startColIndex = indexMap.get(normalized.startColId);
+  const endColIndex = indexMap.get(normalized.endColId);
+  
+  if (startColIndex === undefined || endColIndex === undefined) {
+    return [];
+  }
+  
   const minCol = Math.min(startColIndex, endColIndex);
   const maxCol = Math.max(startColIndex, endColIndex);
+  const colCount = maxCol - minCol + 1;
   
-  for (let row = normalized.startRow; row <= normalized.endRow; row++) {
-    const rowValues: CellValue[] = [];
-    for (let col = minCol; col <= maxCol; col++) {
-      const colId = columnOrder[col];
-      rowValues.push(getFieldValue(data[row], colId));
+  const rowCount = normalized.endRow - normalized.startRow + 1;
+  const values: CellValue[][] = new Array(rowCount);
+  
+  for (let r = 0; r < rowCount; r++) {
+    const row = normalized.startRow + r;
+    const rowValues: CellValue[] = new Array(colCount);
+    
+    for (let c = 0; c < colCount; c++) {
+      const col = minCol + c;
+      rowValues[c] = getFieldValue(data[row], columnOrder[col]);
     }
-    values.push(rowValues);
+    values[r] = rowValues;
   }
   
   return values;
@@ -169,7 +229,7 @@ export function createRange(
 }
 
 /**
- * Get selection bounds
+ * Get selection bounds - Optimized with index map
  */
 export function getSelectionBounds(
   ranges: CellRange[],
@@ -177,21 +237,30 @@ export function getSelectionBounds(
 ): { minRow: number; maxRow: number; minCol: number; maxCol: number } | null {
   if (ranges.length === 0) return null;
   
+  const indexMap = getColumnIndexMap(columnOrder);
+  
   let minRow = Infinity;
   let maxRow = -Infinity;
   let minCol = Infinity;
   let maxCol = -Infinity;
   
-  for (const range of ranges) {
+  for (let i = 0; i < ranges.length; i++) {
+    const range = ranges[i];
     const normalized = normalizeRange(range);
+    
     minRow = Math.min(minRow, normalized.startRow);
     maxRow = Math.max(maxRow, normalized.endRow);
     
-    const startColIndex = columnOrder.indexOf(normalized.startColId);
-    const endColIndex = columnOrder.indexOf(normalized.endColId);
-    minCol = Math.min(minCol, startColIndex, endColIndex);
-    maxCol = Math.max(maxCol, startColIndex, endColIndex);
+    const startColIndex = indexMap.get(normalized.startColId);
+    const endColIndex = indexMap.get(normalized.endColId);
+    
+    if (startColIndex !== undefined && endColIndex !== undefined) {
+      minCol = Math.min(minCol, startColIndex, endColIndex);
+      maxCol = Math.max(maxCol, startColIndex, endColIndex);
+    }
   }
+  
+  if (minCol === Infinity) return null;
   
   return { minRow, maxRow, minCol, maxCol };
 }

@@ -135,6 +135,8 @@ export function GridHeader<TData extends RowData>({
                   role="button"
                   aria-label="Drag to move column"
                   style={{ WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'none' }}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
                 >
                   <Grip className="h-4 w-4 pointer-events-none" />
                 </span>

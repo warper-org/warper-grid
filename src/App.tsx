@@ -1041,6 +1041,9 @@ function App() {
               headerHeight={44}
               overscan={5}
               striped
+              renderTime={renderTime}
+              useWasm={true}
+              actualTotalRows={rawData.length}
               onGridReady={handleGridReady}
               onCellClick={(event: { colId: string; value: unknown }) => console.log('Cell clicked:', event.colId, event.value)}
               onRowClick={(event: { rowIndex: number; data: Person }) => console.log('Row clicked:', event.rowIndex, event.data)}
@@ -1058,7 +1061,7 @@ function App() {
         </div>
 
         <footer className="mt-3 flex items-center justify-between">
-          <StatsDisplay totalRows={data.length} renderTime={renderTime} />
+          <StatsDisplay totalRows={rawData.length} renderTime={renderTime} />
 
           <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">
             <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">

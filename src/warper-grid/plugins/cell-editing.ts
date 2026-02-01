@@ -165,10 +165,40 @@ export function parseInputValue(
 }
 
 // ============================================================================
-// Keyboard Navigation
+// Keyboard Navigation - Performance Optimized
 // ============================================================================
 
 export type NavigationDirection = 'up' | 'down' | 'left' | 'right' | 'tab' | 'shiftTab';
+
+// Cache for visible columns to avoid repeated filtering
+let cachedColumns: ColumnDef<RowData>[] | null = null;
+let cachedVisibleColumns: ColumnDef<RowData>[] | null = null;
+let cachedColIdToIndex: Map<string, number> | null = null;
+
+function getVisibleColumnsData<TData extends RowData>(
+  columns: ColumnDef<TData>[]
+): { visibleColumns: ColumnDef<TData>[]; colIdToIndex: Map<string, number> } {
+  // Check if we can use cached data
+  if (cachedColumns === columns && cachedVisibleColumns && cachedColIdToIndex) {
+    return { 
+      visibleColumns: cachedVisibleColumns as ColumnDef<TData>[], 
+      colIdToIndex: cachedColIdToIndex 
+    };
+  }
+  
+  // Rebuild cache
+  const visibleColumns = columns.filter(col => !col.hide);
+  const colIdToIndex = new Map<string, number>();
+  for (let i = 0; i < visibleColumns.length; i++) {
+    colIdToIndex.set(visibleColumns[i].id, i);
+  }
+  
+  cachedColumns = columns as ColumnDef<RowData>[];
+  cachedVisibleColumns = visibleColumns as ColumnDef<RowData>[];
+  cachedColIdToIndex = colIdToIndex;
+  
+  return { visibleColumns, colIdToIndex };
+}
 
 export function getNextEditableCell<TData extends RowData>(
   currentCell: CellPosition,
@@ -176,13 +206,14 @@ export function getNextEditableCell<TData extends RowData>(
   columns: ColumnDef<TData>[],
   rowCount: number
 ): CellPosition | null {
-  const visibleColumns = columns.filter(col => !col.hide);
-  const currentColIndex = visibleColumns.findIndex(col => col.id === currentCell.colId);
+  const { visibleColumns, colIdToIndex } = getVisibleColumnsData(columns);
+  const currentColIndex = colIdToIndex.get(currentCell.colId);
   
-  if (currentColIndex === -1) return null;
+  if (currentColIndex === undefined) return null;
   
   let nextRow = currentCell.rowIndex;
   let nextColIndex = currentColIndex;
+  const colCount = visibleColumns.length;
   
   switch (direction) {
     case 'up':
@@ -195,11 +226,11 @@ export function getNextEditableCell<TData extends RowData>(
       nextColIndex = Math.max(0, currentColIndex - 1);
       break;
     case 'right':
-      nextColIndex = Math.min(visibleColumns.length - 1, currentColIndex + 1);
+      nextColIndex = Math.min(colCount - 1, currentColIndex + 1);
       break;
     case 'tab':
       nextColIndex++;
-      if (nextColIndex >= visibleColumns.length) {
+      if (nextColIndex >= colCount) {
         nextColIndex = 0;
         nextRow = Math.min(rowCount - 1, currentCell.rowIndex + 1);
       }
@@ -207,7 +238,7 @@ export function getNextEditableCell<TData extends RowData>(
     case 'shiftTab':
       nextColIndex--;
       if (nextColIndex < 0) {
-        nextColIndex = visibleColumns.length - 1;
+        nextColIndex = colCount - 1;
         nextRow = Math.max(0, currentCell.rowIndex - 1);
       }
       break;

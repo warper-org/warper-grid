@@ -1,4 +1,5 @@
 import React from 'react';
+import { Zap, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
   RowData,
@@ -11,7 +12,6 @@ import type {
 } from '../plugins/status-bar';
 import { formatStatNumber } from '../plugins/status-bar';
 import type { CellRange } from '../plugins/cell-selection';
-import { LARGE_DATASET_THRESHOLD } from '../constants';
 
 // ============================================================================
 // Status Bar Props
@@ -27,6 +27,8 @@ interface StatusBarProps<TData extends RowData = RowData> {
   rangeStats?: RangeStatistics | null;
   panels?: StatusPanelConfig<TData>[];
   className?: string;
+  renderTime?: number;
+  useWasm?: boolean;
 }
 
 // ============================================================================
@@ -35,23 +37,12 @@ interface StatusBarProps<TData extends RowData = RowData> {
 
 function TotalRowsPanel<TData extends RowData>({ 
   totalRows, 
-  displayedRows 
 }: StatusPanelParams<TData>) {
   return (
-    <div className="warper-status-panel">
-      <span className="warper-status-label">Total Rows:</span>
-      <span className="warper-status-value">{totalRows.toLocaleString()}</span>
-      {displayedRows !== totalRows && (
-        <>
-          <span className="warper-status-separator">|</span>
-          <span className="warper-status-label">Showing:</span>
-          <span className="warper-status-value">{displayedRows.toLocaleString()}</span>
-        </>
-      )}
-      {totalRows > LARGE_DATASET_THRESHOLD && (
-        <span className="warper-status-warning"> • Large dataset mode</span>
-      )}
-    </div>
+    <span className="warper-status-text">
+      <span className="warper-status-num">{totalRows.toLocaleString()}</span>
+      <span className="warper-status-label"> rows</span>
+    </span>
   );
 }
 
@@ -77,21 +68,23 @@ function SelectedRowsPanel<TData extends RowData>({
   if (selectedRows === 0 && selectedCells === 0) return null;
   
   return (
-    <div className="warper-status-panel">
+    <span className="warper-status-text">
       {selectedRows > 0 && (
         <>
-          <span className="warper-status-label">Selected Rows:</span>
-          <span className="warper-status-value">{selectedRows.toLocaleString()}</span>
+          <span className="warper-status-num">{selectedRows.toLocaleString()}</span>
+          <span className="warper-status-label"> selected</span>
         </>
+      )}
+      {selectedRows > 0 && selectedCells > 0 && (
+        <span className="warper-status-sep">·</span>
       )}
       {selectedCells > 0 && (
         <>
-          {selectedRows > 0 && <span className="warper-status-separator">|</span>}
-          <span className="warper-status-label">Cells:</span>
-          <span className="warper-status-value">{selectedCells.toLocaleString()}</span>
+          <span className="warper-status-num">{selectedCells.toLocaleString()}</span>
+          <span className="warper-status-label"> cells</span>
         </>
       )}
-    </div>
+    </span>
   );
 }
 
@@ -195,6 +188,8 @@ export function StatusBar<TData extends RowData = RowData>({
   rangeStats = null,
   panels = [],
   className,
+  renderTime,
+  useWasm = true,
 }: StatusBarProps<TData>) {
   // Use default panels if none provided
   const defaultPanels: StatusPanelConfig<TData>[] = [
@@ -233,6 +228,12 @@ export function StatusBar<TData extends RowData = RowData>({
             {renderPanel(config, { ...panelParams, params: config.params || {} })}
           </React.Fragment>
         ))}
+        
+        {/* Warper Grid Branding */}
+        <span className="warper-status-brand">
+          <Sparkles className="w-3 h-3 text-emerald-500" />
+          <span>Warper Grid</span>
+        </span>
       </div>
       
       <div className="warper-status-bar-right">
@@ -241,6 +242,19 @@ export function StatusBar<TData extends RowData = RowData>({
             {renderPanel(config, { ...panelParams, params: config.params || {} })}
           </React.Fragment>
         ))}
+        
+        {/* Performance Stats - Right side */}
+        {renderTime !== undefined && (
+          <span className="warper-status-text warper-status-perf">
+            <Zap className="w-3 h-3" />
+            <span>{renderTime}ms</span>
+          </span>
+        )}
+        {useWasm && (
+          <span className="warper-status-text warper-status-wasm">
+            <span>WASM</span>
+          </span>
+        )}
       </div>
     </div>
   );

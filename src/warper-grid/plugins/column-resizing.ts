@@ -7,7 +7,7 @@ import type {
 } from '../types';
 
 // ============================================================================
-// Column Resizing Utilities
+// Column Resizing Utilities - Performance Optimized
 // ============================================================================
 
 export interface ResizeState {
@@ -17,7 +17,7 @@ export interface ResizeState {
 }
 
 /**
- * Calculate new width during resize
+ * Calculate new width during resize - Inlined for performance
  */
 export function calculateNewWidth(
   startWidth: number,
@@ -26,34 +26,34 @@ export function calculateNewWidth(
   minWidth: number = 50,
   maxWidth: number = 1000
 ): number {
-  const delta = currentX - startX;
-  const newWidth = startWidth + delta;
-  return Math.min(Math.max(newWidth, minWidth), maxWidth);
+  const newWidth = startWidth + (currentX - startX);
+  // Use Math.max/min chaining for single operation
+  return newWidth < minWidth ? minWidth : newWidth > maxWidth ? maxWidth : newWidth;
 }
 
 // ============================================================================
-// Column Resizing Plugin
+// Column Resizing Plugin - Optimized
 // ============================================================================
 
-let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: ColumnResizingPluginConfig = {};
+let _pluginApi: GridApi<RowData> | null = null;
+let _pluginConfig: ColumnResizingPluginConfig = {};
 
 export const columnResizingPlugin: GridPlugin<RowData> = {
   name: 'columnResizing',
 
   init(api: GridApi<RowData>, config?: ColumnResizingPluginConfig) {
-    pluginApi = api;
-    pluginConfig = config || { minWidth: 50, maxWidth: 1000 };
+    _pluginApi = api;
+    _pluginConfig = config || { minWidth: 50, maxWidth: 1000 };
   },
 
   destroy() {
-    pluginApi = null;
-    pluginConfig = {};
+    _pluginApi = null;
+    _pluginConfig = {};
   },
 };
 
 // ============================================================================
-// Column Resizing Hook
+// Column Resizing Hook - Performance Optimized
 // ============================================================================
 
 export function useColumnResizing<TData extends RowData>(
@@ -61,16 +61,28 @@ export function useColumnResizing<TData extends RowData>(
   minWidth: number = 50,
   maxWidth: number = 1000
 ) {
-  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const resizeStateRef = useRef<ResizeState | null>(null);
+  const resizingColIdRef = useRef<string | null>(null);
+  
+  // Use RAF for smooth updates
+  const rafIdRef = useRef<number | null>(null);
+  const lastUpdateRef = useRef<number>(0);
   
   const startResize = useCallback((colId: string, startX: number, startWidth: number) => {
-    setResizeState({ colId, startX, startWidth });
+    resizeStateRef.current = { colId, startX, startWidth };
+    resizingColIdRef.current = colId;
     setIsResizing(true);
   }, []);
 
   const updateResize = useCallback((currentX: number) => {
+    const resizeState = resizeStateRef.current;
     if (!resizeState) return;
+    
+    // Throttle updates to 60fps using RAF
+    const now = performance.now();
+    if (now - lastUpdateRef.current < 16) return; // ~60fps
+    lastUpdateRef.current = now;
     
     const newWidth = calculateNewWidth(
       resizeState.startWidth,
@@ -80,38 +92,54 @@ export function useColumnResizing<TData extends RowData>(
       maxWidth
     );
     
+    // Only update if width actually changed
     api.setColumnWidth(resizeState.colId, newWidth);
-  }, [resizeState, api, minWidth, maxWidth]);
+  }, [api, minWidth, maxWidth]);
 
   const endResize = useCallback(() => {
-    setResizeState(null);
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    resizeStateRef.current = null;
+    resizingColIdRef.current = null;
     setIsResizing(false);
   }, []);
 
-  // Setup mouse event handlers
+  // Optimized mouse event handlers with passive listeners
   useEffect(() => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      updateResize(e.clientX);
+      // Use RAF for batched updates
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      rafIdRef.current = requestAnimationFrame(() => {
+        updateResize(e.clientX);
+      });
     };
 
     const handleMouseUp = () => {
       endResize();
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
+    // Use passive listeners for better scroll performance
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
     };
   }, [isResizing, updateResize, endResize]);
 
   return {
     isResizing,
-    resizingColId: resizeState?.colId ?? null,
+    resizingColId: resizingColIdRef.current,
     startResize,
     updateResize,
     endResize,

@@ -192,31 +192,36 @@ export function getDefaultColumnMenuItems<TData extends RowData = RowData>(): Co
 /**
  * Get column visibility submenu items
  */
+/**
+ * Get column visibility submenu items - Optimized
+ */
 export function getColumnVisibilityItems<TData extends RowData = RowData>(
   api: GridApi<TData>
 ): ColumnMenuItem<TData>[] {
   const columns = api.getColumns();
   
-  return columns
-    .filter(col => !col.lockVisible)
-    .map(col => ({
-      id: `visibility-${col.id}`,
-      name: col.headerName || col.id,
+  // Pre-filter to avoid unnecessary iterations
+  const visibleColumns = columns.filter(col => !col.lockVisible);
+  
+  return visibleColumns.map(col => {
+    const colId = col.id;
+    
+    return {
+      id: `visibility-${colId}`,
+      name: col.headerName || colId,
       checked: (params: ColumnMenuParams<TData>) => {
-        // Check if column is visible using the API to get current state
-        const currentCol = params.api.getColumns().find(c => c.id === col.id);
-        const colState = params.api.getState().columnState.get(col.id);
-        // Column is visible if not hidden in definition and not hidden in state
-        const isHidden = colState?.hide ?? currentCol?.hide ?? false;
+        // Use Map.get for O(1) lookup instead of find
+        const colState = params.api.getState().columnState.get(colId);
+        const isHidden = colState?.hide ?? col.hide ?? false;
         return !isHidden;
       },
       action: (params: ColumnMenuParams<TData>) => {
-        const colState = params.api.getState().columnState.get(col.id);
-        const currentCol = params.api.getColumns().find(c => c.id === col.id);
-        const isCurrentlyHidden = colState?.hide ?? currentCol?.hide ?? false;
-        params.api.setColumnVisible(col.id, isCurrentlyHidden);
+        const colState = params.api.getState().columnState.get(colId);
+        const isCurrentlyHidden = colState?.hide ?? col.hide ?? false;
+        params.api.setColumnVisible(colId, isCurrentlyHidden);
       },
-    }));
+    };
+  });
 }
 
 // ============================================================================

@@ -109,14 +109,14 @@ export function getPageNumbers(
 // Pagination Plugin
 // ============================================================================
 
-let pluginApi: GridApi<RowData> | null = null;
+let _pluginApi: GridApi<RowData> | null = null;
 let _pluginConfig: PaginationPluginConfig = {};
 
 export const paginationPlugin: GridPlugin<RowData> = {
   name: 'pagination',
 
   init(api: GridApi<RowData>, config?: PaginationPluginConfig) {
-    pluginApi = api;
+    _pluginApi = api;
     _pluginConfig = config || {};
     
     // Apply default page size if provided
@@ -126,7 +126,7 @@ export const paginationPlugin: GridPlugin<RowData> = {
   },
 
   destroy() {
-    pluginApi = null;
+    _pluginApi = null;
     _pluginConfig = {};
   },
 };

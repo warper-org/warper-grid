@@ -8,6 +8,16 @@
 :root {
   --radius: 0rem;
   
+  /* Grid Header Colors */
+  --warper-header-bg: #f3f4f6;
+  --warper-header-border: #e5e7eb;
+  --warper-header-hover: rgba(0, 0, 0, 0.05);
+  --warper-header-sorted: rgba(16, 185, 129, 0.15);
+  --warper-status-bg: #f9fafb;
+  --warper-row-hover: #f9fafb;
+  --warper-row-selected: rgba(16, 185, 129, 0.1);
+  --warper-row-striped: rgba(0, 0, 0, 0.02);
+  
   /* Base Colors - Zinc */
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -62,6 +72,16 @@
 }
 
 .dark {
+  /* Grid Header Colors - Dark */
+  --warper-header-bg: #363946;
+  --warper-header-border: rgba(255, 255, 255, 0.1);
+  --warper-header-hover: rgba(255, 255, 255, 0.08);
+  --warper-header-sorted: rgba(16, 185, 129, 0.15);
+  --warper-status-bg: #363946;
+  --warper-row-hover: rgba(255, 255, 255, 0.05);
+  --warper-row-selected: rgba(16, 185, 129, 0.1);
+  --warper-row-striped: rgba(255, 255, 255, 0.02);
+  
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   
@@ -123,9 +143,11 @@
 /* ===== WarperGrid Component Styles ===== */
 @layer components {
   .warper-grid {
-    @apply w-full h-full overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)];
+    @apply w-full h-full overflow-hidden rounded-[var(--radius)] border border-[var(--border)];
+    background: var(--background);
     display: flex;
     flex-direction: column;
+    min-width: 0;
     /* Disable text selection for spreadsheet-like experience */
     user-select: none;
     -webkit-user-select: none;
@@ -134,7 +156,9 @@
   }
 
   .warper-grid-header {
-    @apply flex-shrink-0 bg-[var(--muted)] border-b border-[var(--border)];
+    @apply flex-shrink-0 border-b;
+    background: var(--warper-header-bg);
+    border-color: var(--warper-header-border);
   }
 
   .warper-grid-header-row {
@@ -143,12 +167,11 @@
 
   .warper-grid-header-cell {
     @apply flex items-center px-3 py-2 text-sm font-semibold text-[var(--foreground)] select-none;
-    @apply border-r border-[var(--border)] last:border-r-0;
+    @apply border-r last:border-r-0;
+    background: var(--warper-header-bg);
+    border-color: var(--warper-header-border);
     cursor: grab;
     position: relative;
-    /* Stronger partition visibility */
-    border-right-width: 1px;
-    border-right-color: rgba(255,255,255,0.06);
   }
 
   /* Drag target indicators (insertion caret) */
@@ -180,7 +203,7 @@
 
   /* Partition between header and body */
   .warper-grid-header {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--warper-header-border);
   }
 
   .warper-grid-cell {
@@ -190,7 +213,7 @@
     cursor: cell;
     /* Improved partition visibility */
     border-right-width: 1px;
-    border-right-color: rgba(0,0,0,0.2);
+    @apply border-r-gray-100 dark:border-r-black/20;
   }
 
   .warper-grid-header-cell.dragging {
@@ -198,11 +221,15 @@
   }
 
   .warper-grid-header-cell--sortable {
-    @apply cursor-pointer hover:bg-[var(--accent)];
+    @apply cursor-pointer;
+  }
+  
+  .warper-grid-header-cell--sortable:hover {
+    background: var(--warper-header-hover);
   }
 
   .warper-grid-header-cell--sorted {
-    @apply bg-[var(--accent)];
+    background: var(--warper-header-sorted);
   }
 
   .warper-grid-body {
@@ -231,15 +258,19 @@
 
   .warper-grid-row {
     @apply flex border-b border-[var(--border)] last:border-b-0;
-    @apply hover:bg-[var(--accent)] transition-colors duration-150;
+    @apply transition-colors duration-150;
+  }
+
+  .warper-grid-row:hover {
+    background: var(--warper-row-hover);
   }
 
   .warper-grid-row--selected {
-    @apply bg-[var(--primary)]/10;
+    background: var(--warper-row-selected);
   }
 
   .warper-grid-row--striped:nth-child(even) {
-    @apply bg-[var(--muted)]/50;
+    background: var(--warper-row-striped);
   }
 
   .warper-grid-cell {
@@ -282,10 +313,9 @@
     @apply bg-[var(--primary)];
   }
 
-  /* Pinned column helper */
+  /* Pinned column helper - keep same style as other columns */
   .warper-grid-cell--pinned-left,
   .warper-grid-cell--pinned-right {
-    @apply bg-[var(--background)];
     @apply border-r border-[var(--border)];
   }
 
@@ -308,13 +338,13 @@
     @apply flex items-center justify-center h-full text-[var(--muted-foreground)];
   }
 
-  /* Pinned Columns */
+  /* Pinned Columns - subtle styling, matches normal columns */
   .warper-grid-pinned-left {
-    @apply bg-[var(--card)] shadow-[2px_0_4px_rgba(0,0,0,0.1)];
+    /* No special styling - matches other columns */
   }
 
   .warper-grid-pinned-right {
-    @apply bg-[var(--card)] shadow-[-2px_0_4px_rgba(0,0,0,0.1)];
+    /* No special styling - matches other columns */
   }
 
   /* ===== Context Menu ===== */
@@ -411,54 +441,56 @@
     @apply max-h-[250px] overflow-y-auto;
   }
 
-  /* ===== Status Bar ===== */
+  /* ===== Status Bar - Simple & Modern ===== */
   .warper-status-bar {
-    @apply flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[var(--muted)];
-    @apply text-xs text-[var(--muted-foreground)];
+    @apply flex items-center justify-between px-3 py-1.5 border-t border-[var(--border)] text-xs;
+    background: var(--warper-status-bg);
+    gap: 0.75rem;
   }
 
-  .warper-status-bar-left {
-    @apply flex items-center gap-4;
+  .warper-status-bar-left,
+  .warper-status-bar-center,
+  .warper-status-bar-right {
+    @apply flex items-center gap-3;
   }
 
   .warper-status-bar-center {
-    @apply flex items-center gap-4;
+    @apply justify-center flex-1;
   }
 
   .warper-status-bar-right {
-    @apply flex items-center gap-4;
+    @apply justify-end gap-4;
   }
 
-  .warper-status-panel {
-    @apply flex items-center gap-1.5;
+  /* Subtle Text Styles */
+  .warper-status-text {
+    @apply flex items-center gap-1 text-[var(--muted-foreground)];
   }
 
-  .warper-status-panel--stats {
-    @apply gap-4;
+  .warper-status-num {
+    @apply font-medium text-[var(--foreground)] tabular-nums;
   }
 
   .warper-status-label {
     @apply text-[var(--muted-foreground)];
   }
 
-  .warper-status-value {
-    @apply font-medium text-[var(--foreground)];
+  .warper-status-sep {
+    @apply mx-1 text-[var(--muted-foreground)] opacity-50;
   }
 
-  .warper-status-separator {
-    @apply text-[var(--border)] mx-1;
+  /* Branding */
+  .warper-status-brand {
+    @apply flex items-center gap-1.5 text-[var(--muted-foreground)] font-medium;
   }
 
-  .warper-status-stat {
-    @apply flex items-center gap-1;
+  /* Performance indicators */
+  .warper-status-perf {
+    @apply text-blue-600 dark:text-blue-400;
   }
 
-  .warper-status-stat-label {
-    @apply text-[var(--muted-foreground)];
-  }
-
-  .warper-status-stat-value {
-    @apply font-mono font-medium text-[var(--foreground)];
+  .warper-status-wasm {
+    @apply text-purple-600 dark:text-purple-400 font-semibold;
   }
 
   /* ===== Cell Selection - Spreadsheet-like ===== */
@@ -681,4 +713,47 @@
 
 .warper-animate-slide-in {
   animation: warper-slide-in 0.2s ease-out;
+}
+
+/* ===== Responsive Styles ===== */
+@media (max-width: 768px) {
+  .warper-status-bar {
+    @apply flex-wrap gap-2 py-2;
+  }
+
+  .warper-status-bar-center {
+    @apply order-first w-full justify-start;
+  }
+
+  .warper-status-bar-left,
+  .warper-status-bar-right {
+    @apply flex-1;
+  }
+
+  .warper-chip {
+    @apply px-1.5 text-[10px];
+  }
+
+  .warper-chip-icon {
+    @apply w-2.5 h-2.5;
+  }
+
+  .warper-grid-header-cell,
+  .warper-grid-cell {
+    @apply px-2 py-1.5 text-xs;
+  }
+}
+
+@media (max-width: 480px) {
+  .warper-status-bar {
+    @apply px-2;
+  }
+
+  .warper-status-chips {
+    @apply gap-1;
+  }
+
+  .warper-chip {
+    @apply px-1 py-0;
+  }
 }

@@ -705,6 +705,15 @@ export interface WarperGridProps<TData extends RowData = RowData> {
   
   /** Maximum number of rows to process client-side for filtering/sorting (default: 10000) */
   maxClientSideRows?: number;
+  
+  /** Render time in milliseconds (for status bar display) */
+  renderTime?: number;
+  
+  /** Whether WASM acceleration is enabled (for status bar display) */
+  useWasm?: boolean;
+  
+  /** Actual total rows in the dataset (before SQL limiting) */
+  actualTotalRows?: number;
 }
 
 // ============================================================================

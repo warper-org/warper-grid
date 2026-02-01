@@ -30,7 +30,6 @@ import { GridPagination } from './components/GridPagination';
 import { ContextMenu } from './components/ContextMenu';
 import { StatusBar } from './components/StatusBar';
 import { PluginManager } from './plugin-manager';
-import { AccordionItem } from './components/ui/Accordion';
 import type {
   RowData,
   WarperGridProps,
@@ -337,6 +336,9 @@ function WarperGridInner<TData extends RowData>(
     onPageChanged,
     onGridReady,
     maxClientSideRows = 10000,
+    renderTime,
+    useWasm = true,
+    actualTotalRows,
   } = props;
 
   // Initialize state
@@ -479,39 +481,34 @@ function WarperGridInner<TData extends RowData>(
 
 
   // Debounced filter/sort for 0% performance loss
+  // IMPORTANT: Sort and filter the FULL dataset first, pagination is applied separately during render
   const [processedData, setProcessedData] = useState(state.data);
   const debouncedProcessData = useDebouncedCallback(() => {
     const hasFilters = state.filterModel.length > 0 || state.quickFilterText;
     const hasSorts = state.sortModel.length > 0;
 
-    // Check if pagination is enabled
-    const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
-
-    // If no filters/sorts, processedData should reflect the full dataset (not a page slice).
-    // Pagination will be applied separately when rendering via paginatedData.
+    // If no filters/sorts, processedData should reflect the full dataset
+    // Pagination will be applied separately when rendering via paginatedData
     if (!hasFilters && !hasSorts) {
       setProcessedData(state.data);
       return;
     }
 
-    let dataToProcess = state.data;
-    if (isPaginationEnabled) {
-      // For paginated mode, process only the current page to avoid large array operations
-      dataToProcess = paginateData(state.data, state.page, state.pageSize);
-    } else {
-      // For large datasets without pagination, skip processing
-      if (state.data.length > maxClientSideRows) {
-        console.warn(
-          `WarperGrid: Dataset has ${state.data.length} rows, exceeding maxClientSideRows (${maxClientSideRows}). ` +
-          'Client-side filtering and sorting are disabled for performance. ' +
-          'Consider using server-side processing or pagination for large datasets.'
-        );
-        setProcessedData(state.data);
-        return;
-      }
+    // For large datasets without pagination, skip processing and warn
+    if (state.data.length > maxClientSideRows && !pluginManagerRef.current!.isLoaded('pagination')) {
+      console.warn(
+        `WarperGrid: Dataset has ${state.data.length} rows, exceeding maxClientSideRows (${maxClientSideRows}). ` +
+        'Client-side filtering and sorting are disabled for performance. ' +
+        'Consider using server-side processing or pagination for large datasets.'
+      );
+      setProcessedData(state.data);
+      return;
     }
 
-    let result = dataToProcess;
+    // Process the FULL dataset - pagination happens separately at render time
+    let result = state.data;
+    
+    // Apply filters first (reduces dataset for sorting)
     if (hasFilters) {
       const getRowValues = (row: TData): CellValue[] => {
         return state.columns.map(col => getColumnValue(row, col.id));
@@ -524,6 +521,8 @@ function WarperGridInner<TData extends RowData>(
         getRowValues
       );
     }
+    
+    // Apply sorting on the filtered (or full) dataset
     if (hasSorts) {
       result = sortData(
         result,
@@ -532,13 +531,14 @@ function WarperGridInner<TData extends RowData>(
         (colId) => state.columns.find(c => c.id === colId)?.comparator
       );
     }
+    
     setProcessedData(result);
   }, 0, { maxWait: 16 }); // 0ms wait, but batch within a frame
 
   useEffect(() => {
     debouncedProcessData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue, state.page, state.pageSize]);
+  }, [state.data, state.filterModel, state.quickFilterText, state.sortModel, state.columns, getColumnValue]);
 
 
   // Sync processedData into grid state for plugins that read state.processedData
@@ -1413,10 +1413,12 @@ function WarperGridInner<TData extends RowData>(
         {/* Status Bar */}
         {pluginManagerRef.current!.isLoaded('statusBar') && (
           <StatusBar
-            totalRows={state.data.length}
+            totalRows={actualTotalRows ?? state.data.length}
             displayedRows={processedData.length}
             selectedRows={state.selection.selectedRows.size}
             selectedCells={cellSelection.selectedCells.size}
+            renderTime={renderTime}
+            useWasm={useWasm}
           />
         )}
 

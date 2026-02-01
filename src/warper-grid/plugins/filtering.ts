@@ -9,93 +9,101 @@ import type {
 } from '../types';
 
 // ============================================================================
-// Filter Utilities
+// Filter Utilities - Performance Optimized
 // ============================================================================
 
 /**
- * Check if a value matches a text filter
+ * Check if a value matches a text filter - Optimized with early returns
  */
 export function matchesTextFilter(
   value: CellValue,
   filterValue: string,
   operator: string = 'contains'
 ): boolean {
+  // Fast path: empty filter matches everything
   if (filterValue === '' || filterValue == null) return true;
-  if (value == null) return operator === 'blank';
+  
+  // Handle blank check before string conversion
+  if (operator === 'blank') return value == null || String(value).trim() === '';
+  if (operator === 'notBlank') return value != null && String(value).trim() !== '';
+  
+  // Null check after blank operators
+  if (value == null) return false;
 
+  // Convert to lowercase strings once
   const strValue = String(value).toLowerCase();
-  const filterStr = String(filterValue).toLowerCase();
+  const filterStr = filterValue.toLowerCase();
 
+  // Use switch with most common cases first
   switch (operator) {
-    case 'equals':
-      return strValue === filterStr;
-    case 'notEquals':
-      return strValue !== filterStr;
     case 'contains':
       return strValue.includes(filterStr);
-    case 'notContains':
-      return !strValue.includes(filterStr);
+    case 'equals':
+      return strValue === filterStr;
     case 'startsWith':
       return strValue.startsWith(filterStr);
     case 'endsWith':
       return strValue.endsWith(filterStr);
-    case 'blank':
-      return strValue.trim() === '';
-    case 'notBlank':
-      return strValue.trim() !== '';
+    case 'notEquals':
+      return strValue !== filterStr;
+    case 'notContains':
+      return !strValue.includes(filterStr);
     default:
       return strValue.includes(filterStr);
   }
 }
 
 /**
- * Check if a value matches a number filter
+ * Check if a value matches a number filter - Optimized
  */
 export function matchesNumberFilter(
   value: CellValue,
   filterValue: unknown,
   operator: string = 'equals'
 ): boolean {
+  // Fast path for empty filter
   if (filterValue == null || filterValue === '') return true;
-  if (value == null) return operator === 'blank';
-
-  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
   
-  if (isNaN(numValue)) {
-    return operator === 'blank';
-  }
+  // Handle blank operators
+  if (operator === 'blank') return value == null || (typeof value === 'number' && Number.isNaN(value));
+  if (operator === 'notBlank') return value != null && !(typeof value === 'number' && Number.isNaN(value));
+  
+  if (value == null) return false;
+
+  // Use direct number check first, then parse
+  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+  if (Number.isNaN(numValue)) return false;
 
   const filterNum = typeof filterValue === 'number' ? filterValue : parseFloat(String(filterValue));
+  if (Number.isNaN(filterNum) && operator !== 'between') return false;
 
   switch (operator) {
     case 'equals':
       return numValue === filterNum;
-    case 'notEquals':
-      return numValue !== filterNum;
-    case 'lessThan':
-      return numValue < filterNum;
-    case 'lessThanOrEqual':
-      return numValue <= filterNum;
     case 'greaterThan':
       return numValue > filterNum;
+    case 'lessThan':
+      return numValue < filterNum;
     case 'greaterThanOrEqual':
       return numValue >= filterNum;
+    case 'lessThanOrEqual':
+      return numValue <= filterNum;
+    case 'notEquals':
+      return numValue !== filterNum;
     case 'between':
       if (Array.isArray(filterValue) && filterValue.length === 2) {
-        return numValue >= filterValue[0] && numValue <= filterValue[1];
+        const min = Number(filterValue[0]);
+        const max = Number(filterValue[1]);
+        return numValue >= min && numValue <= max;
       }
       return true;
-    case 'blank':
-      return isNaN(numValue);
-    case 'notBlank':
-      return !isNaN(numValue);
     default:
       return numValue === filterNum;
   }
 }
 
 /**
- * Check if a value matches a date filter
+ * Check if a value matches a date filter - Optimized
  */
 export function matchesDateFilter(
   value: CellValue,
@@ -103,37 +111,44 @@ export function matchesDateFilter(
   operator: string = 'equals'
 ): boolean {
   if (filterValue == null) return true;
-  if (value == null) return operator === 'blank';
-
-  const dateValue = value instanceof Date ? value : new Date(String(value));
   
-  if (isNaN(dateValue.getTime())) {
-    return operator === 'blank';
-  }
+  if (operator === 'blank') return value == null;
+  if (value == null) return false;
+
+  // Optimize date parsing
+  const dateValue = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(dateValue.getTime())) return operator === 'blank';
 
   const filterDate = filterValue instanceof Date ? filterValue : new Date(String(filterValue));
+  if (Number.isNaN(filterDate.getTime()) && operator !== 'between') return true;
 
-  // Compare dates without time
-  const dateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  // Pre-compute date-only comparison values
+  const getDateOnly = (d: Date) => {
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const day = d.getDate();
+    return year * 10000 + month * 100 + day;
+  };
 
   switch (operator) {
     case 'equals':
-      return dateOnly(dateValue) === dateOnly(filterDate);
+      return getDateOnly(dateValue) === getDateOnly(filterDate);
     case 'notEquals':
-      return dateOnly(dateValue) !== dateOnly(filterDate);
+      return getDateOnly(dateValue) !== getDateOnly(filterDate);
     case 'lessThan':
-      return dateValue < filterDate;
+      return dateValue.getTime() < filterDate.getTime();
     case 'lessThanOrEqual':
-      return dateValue <= filterDate;
+      return dateValue.getTime() <= filterDate.getTime();
     case 'greaterThan':
-      return dateValue > filterDate;
+      return dateValue.getTime() > filterDate.getTime();
     case 'greaterThanOrEqual':
-      return dateValue >= filterDate;
+      return dateValue.getTime() >= filterDate.getTime();
     case 'between':
       if (Array.isArray(filterValue) && filterValue.length === 2) {
-        const start = new Date(filterValue[0]);
-        const end = new Date(filterValue[1]);
-        return dateValue >= start && dateValue <= end;
+        const start = new Date(filterValue[0]).getTime();
+        const end = new Date(filterValue[1]).getTime();
+        const time = dateValue.getTime();
+        return time >= start && time <= end;
       }
       return true;
     default:
@@ -157,7 +172,7 @@ export function matchesBooleanFilter(
 }
 
 /**
- * Check if a value matches a select filter
+ * Check if a value matches a select filter - Optimized
  */
 export function matchesSelectFilter(
   value: CellValue,
@@ -168,108 +183,121 @@ export function matchesSelectFilter(
   const strValue = String(value ?? '');
   
   if (Array.isArray(filterValue)) {
-    // Multi-select
-    return filterValue.length === 0 || filterValue.some(f => String(f) === strValue);
+    if (filterValue.length === 0) return true;
+    // Use Set for O(1) lookup on large arrays
+    if (filterValue.length > 10) {
+      const filterSet = new Set(filterValue.map(String));
+      return filterSet.has(strValue);
+    }
+    return filterValue.some(f => String(f) === strValue);
   }
   
   return strValue === String(filterValue);
 }
 
 /**
- * Apply a single filter to a value
+ * Apply a single filter to a value - Optimized with lookup table
  */
-export function applyFilter(
-  value: CellValue,
-  filter: FilterModel
-): boolean {
-  const { filterType, value: filterValue, operator } = filter;
-  
-  switch (filterType) {
-    case 'text':
-      return matchesTextFilter(value, filterValue as string, operator);
-    case 'number':
-      return matchesNumberFilter(value, filterValue, operator);
-    case 'date':
-      return matchesDateFilter(value, filterValue, operator);
-    case 'boolean':
-      return matchesBooleanFilter(value, filterValue);
-    case 'select':
-    case 'multi-select':
-      return matchesSelectFilter(value, filterValue);
-    default:
-      return matchesTextFilter(value, String(filterValue ?? ''), operator);
-  }
+const filterFnMap: Record<string, (value: CellValue, filter: FilterModel) => boolean> = {
+  text: (value, filter) => matchesTextFilter(value, filter.value as string, filter.operator),
+  number: (value, filter) => matchesNumberFilter(value, filter.value, filter.operator),
+  date: (value, filter) => matchesDateFilter(value, filter.value, filter.operator),
+  boolean: (value, filter) => matchesBooleanFilter(value, filter.value),
+  select: (value, filter) => matchesSelectFilter(value, filter.value),
+  'multi-select': (value, filter) => matchesSelectFilter(value, filter.value),
+};
+
+export function applyFilter(value: CellValue, filter: FilterModel): boolean {
+  const fn = filterFnMap[filter.filterType];
+  if (fn) return fn(value, filter);
+  return matchesTextFilter(value, String(filter.value ?? ''), filter.operator);
 }
 
 /**
- * Apply quick filter to data
+ * Apply quick filter to data - Performance Optimized
+ * Supports regex literals, quoted phrases, negation, and OR groups
  */
 export function applyQuickFilter<TData extends RowData>(
   data: TData[],
   quickFilterText: string,
   getRowValues: (row: TData) => CellValue[]
 ): TData[] {
-  if (!quickFilterText || quickFilterText.trim() === '') {
-    return data;
-  }
+  // Fast path: empty filter
+  const trimmed = quickFilterText?.trim();
+  if (!trimmed) return data;
 
-  const trimmed = quickFilterText.trim();
+  // Fast path: empty data
+  if (data.length === 0) return data;
 
-  // If user provided a regex literal: /pattern/flags
-  const regexLiteral = trimmed.match(/^\/(.*)\/(i?)$/i);
-  if (regexLiteral) {
+  // Check for regex literal: /pattern/flags
+  const regexMatch = trimmed.match(/^\/(.*)\/([gimsuy]*)$/);
+  if (regexMatch) {
     try {
-      const pattern = regexLiteral[1];
-      const flags = regexLiteral[2] || '';
-      const rx = new RegExp(pattern, flags);
+      const rx = new RegExp(regexMatch[1], regexMatch[2] || 'i');
       return data.filter(row => {
         const values = getRowValues(row);
-        const rowText = values.map(v => String(v ?? '')).join(' ');
-        return rx.test(rowText);
+        // Optimize: use find instead of join for early exit
+        return values.some(v => rx.test(String(v ?? ''))) ||
+               rx.test(values.map(v => String(v ?? '')).join(' '));
       });
-    } catch (err) {
-      // Fall through to token parsing on invalid regex
-      console.warn('[QuickFilter] invalid regex', err);
+    } catch {
+      // Invalid regex, fall through to token parsing
     }
   }
 
-  // Tokenize with support for quoted phrases ("..."), negation (-term), and OR groups (a|b)
-  const tokens: string[] = [];
+  // Parse tokens with support for quoted phrases, negation, and OR groups
+  const tokens: Array<{
+    type: 'include' | 'exclude' | 'or';
+    values: string[];
+  }> = [];
+  
   const tokenRegex = /"([^"]+)"|'([^']+)'|([^\s]+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = tokenRegex.exec(trimmed)) !== null) {
-    tokens.push(m[1] ?? m[2] ?? m[3]);
+  let match: RegExpExecArray | null = tokenRegex.exec(trimmed);
+  
+  while (match !== null) {
+    const tokenRaw = (match[1] ?? match[2] ?? match[3]).trim();
+    if (tokenRaw) {
+      if (tokenRaw.startsWith('-') && tokenRaw.length > 1) {
+        // Negation token
+        tokens.push({ type: 'exclude', values: [tokenRaw.slice(1).toLowerCase()] });
+      } else if (tokenRaw.includes('|')) {
+        // OR group
+        tokens.push({ type: 'or', values: tokenRaw.split('|').map(p => p.toLowerCase()) });
+      } else {
+        // Include token
+        tokens.push({ type: 'include', values: [tokenRaw.toLowerCase()] });
+      }
+    }
+    match = tokenRegex.exec(trimmed);
   }
 
+  // No valid tokens
+  if (tokens.length === 0) return data;
+
+  // Pre-compile for batch processing
   return data.filter(row => {
     const values = getRowValues(row);
     const rowText = values.map(v => String(v ?? '')).join(' ').toLowerCase();
 
-    // All tokens must match (unless negated)
-    return tokens.every(tokenRaw => {
-      if (!tokenRaw) return true;
-      const token = tokenRaw.trim();
-
-      // Negation
-      if (token.startsWith('-') && token.length > 1) {
-        const t = token.slice(1).toLowerCase();
-        return !rowText.includes(t);
+    // All tokens must match their conditions
+    return tokens.every(token => {
+      switch (token.type) {
+        case 'include':
+          return rowText.includes(token.values[0]);
+        case 'exclude':
+          return !rowText.includes(token.values[0]);
+        case 'or':
+          return token.values.some(v => rowText.includes(v));
+        default:
+          return true;
       }
-
-      // OR group e.g. a|b (match any)
-      if (token.includes('|')) {
-        const parts = token.split('|').map(p => p.toLowerCase());
-        return parts.some(p => rowText.includes(p));
-      }
-
-      // Default partial match
-      return rowText.includes(token.toLowerCase());
     });
   });
 }
 
 /**
- * Filter data by filter model
+ * Filter data by filter model - Performance Optimized
+ * Uses batched processing and early exit strategies
  */
 export function filterData<TData extends RowData>(
   data: TData[],
@@ -278,20 +306,32 @@ export function filterData<TData extends RowData>(
   getColumnValue: (row: TData, colId: string) => CellValue,
   getRowValues: (row: TData) => CellValue[]
 ): TData[] {
+  // Fast paths
+  if (data.length === 0) return data;
+  
+  const hasColumnFilters = filterModel.length > 0;
+  const hasQuickFilter = !!quickFilterText?.trim();
+  
+  if (!hasColumnFilters && !hasQuickFilter) return data;
+
   let filtered = data;
 
-  // Apply column filters
-  if (filterModel.length > 0) {
+  // Apply column filters with optimized batch processing
+  if (hasColumnFilters) {
+    // Pre-compute filter functions for each column filter
+    const filterChecks = filterModel.map(filter => ({
+      colId: filter.colId,
+      check: (row: TData) => applyFilter(getColumnValue(row, filter.colId), filter),
+    }));
+
     filtered = filtered.filter(row => {
-      return filterModel.every(filter => {
-        const value = getColumnValue(row, filter.colId);
-        return applyFilter(value, filter);
-      });
+      // Use every() for short-circuit evaluation
+      return filterChecks.every(fc => fc.check(row));
     });
   }
 
   // Apply quick filter
-  if (quickFilterText) {
+  if (hasQuickFilter) {
     filtered = applyQuickFilter(filtered, quickFilterText, getRowValues);
   }
 
@@ -302,21 +342,21 @@ export function filterData<TData extends RowData>(
 // Filtering Plugin
 // ============================================================================
 
-let pluginApi: GridApi<RowData> | null = null;
-let pluginConfig: FilteringPluginConfig = {};
+let _pluginApi: GridApi<RowData> | null = null;
+let _pluginConfig: FilteringPluginConfig = {};
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const filteringPlugin: GridPlugin<RowData> = {
   name: 'filtering',
 
   init(api: GridApi<RowData>, config?: FilteringPluginConfig) {
-    pluginApi = api;
-    pluginConfig = config || {};
+    _pluginApi = api;
+    _pluginConfig = config || {};
   },
 
   destroy() {
-    pluginApi = null;
-    pluginConfig = {};
+    _pluginApi = null;
+    _pluginConfig = {};
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;

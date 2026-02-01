@@ -7,11 +7,11 @@ import type {
 } from '../types';
 
 // ============================================================================
-// Selection Utilities
+// Selection Utilities - Performance Optimized
 // ============================================================================
 
 /**
- * Handle row selection with modifiers
+ * Handle row selection with modifiers - Optimized with reduced object creation
  */
 export function handleRowSelection(
   currentSelection: SelectionState,
@@ -19,56 +19,72 @@ export function handleRowSelection(
   mode: 'single' | 'multiple' | 'none',
   shiftKey: boolean = false,
   ctrlKey: boolean = false,
-  totalRows: number = 0
+  _totalRows: number = 0
 ): SelectionState {
+  // Fast path: no-op for none mode
   if (mode === 'none') {
     return currentSelection;
   }
 
-  const newSelectedRows = new Set(currentSelection.selectedRows);
-
+  // Single selection mode - always replace
   if (mode === 'single') {
-    // Single selection mode
-    newSelectedRows.clear();
-    newSelectedRows.add(rowIndex);
-  } else {
-    // Multiple selection mode
-    if (shiftKey && currentSelection.anchorCell !== null) {
-      // Range selection
-      const anchorIndex = currentSelection.anchorCell.rowIndex;
-      const start = Math.min(anchorIndex, rowIndex);
-      const end = Math.max(anchorIndex, rowIndex);
-      
-      if (!ctrlKey) {
-        newSelectedRows.clear();
-      }
-      
+    // Check if already selected to avoid unnecessary object creation
+    if (currentSelection.selectedRows.size === 1 && currentSelection.selectedRows.has(rowIndex)) {
+      return currentSelection;
+    }
+    return {
+      ...currentSelection,
+      selectedRows: new Set([rowIndex]),
+      anchorCell: { rowIndex, colId: '' },
+      allSelected: false,
+    };
+  }
+
+  // Multiple selection mode
+  let newSelectedRows: Set<number>;
+
+  if (shiftKey && currentSelection.anchorCell !== null) {
+    // Range selection
+    const anchorIndex = currentSelection.anchorCell.rowIndex;
+    const start = Math.min(anchorIndex, rowIndex);
+    const end = Math.max(anchorIndex, rowIndex);
+    
+    if (ctrlKey) {
+      // Add to existing selection
+      newSelectedRows = new Set(currentSelection.selectedRows);
       for (let i = start; i <= end; i++) {
         newSelectedRows.add(i);
       }
-    } else if (ctrlKey) {
-      // Toggle selection
-      if (newSelectedRows.has(rowIndex)) {
-        newSelectedRows.delete(rowIndex);
-      } else {
-        newSelectedRows.add(rowIndex);
-      }
     } else {
-      // Single click - clear and select
-      newSelectedRows.clear();
+      // Replace selection with range
+      newSelectedRows = new Set<number>();
+      for (let i = start; i <= end; i++) {
+        newSelectedRows.add(i);
+      }
+    }
+  } else if (ctrlKey) {
+    // Toggle single row
+    newSelectedRows = new Set(currentSelection.selectedRows);
+    if (newSelectedRows.has(rowIndex)) {
+      newSelectedRows.delete(rowIndex);
+    } else {
       newSelectedRows.add(rowIndex);
     }
+  } else {
+    // Single click - replace selection
+    newSelectedRows = new Set([rowIndex]);
   }
 
   return {
     ...currentSelection,
     selectedRows: newSelectedRows,
     anchorCell: { rowIndex, colId: '' },
+    allSelected: false,
   };
 }
 
 /**
- * Handle cell selection for range selection
+ * Handle cell selection for range selection - Optimized
  */
 export function handleCellSelection(
   currentSelection: SelectionState,
@@ -77,45 +93,53 @@ export function handleCellSelection(
   shiftKey: boolean = false,
   ctrlKey: boolean = false
 ): SelectionState {
-  const newSelectedCells = new Set(currentSelection.selectedCells);
   const cellKey = `${rowIndex}:${colId}`;
 
   if (shiftKey && currentSelection.anchorCell !== null) {
-    // Range selection would require column ordering - simplified here
-    if (!ctrlKey) {
-      newSelectedCells.clear();
-    }
+    // Range selection - simplified for single cell (column ordering handled by caller)
+    const newSelectedCells = ctrlKey 
+      ? new Set(currentSelection.selectedCells)
+      : new Set<string>();
     newSelectedCells.add(cellKey);
+    
+    return {
+      ...currentSelection,
+      selectedCells: newSelectedCells,
+      anchorCell: currentSelection.anchorCell, // Keep anchor
+    };
   } else if (ctrlKey) {
     // Toggle cell selection
+    const newSelectedCells = new Set(currentSelection.selectedCells);
     if (newSelectedCells.has(cellKey)) {
       newSelectedCells.delete(cellKey);
     } else {
       newSelectedCells.add(cellKey);
     }
+    
+    return {
+      ...currentSelection,
+      selectedCells: newSelectedCells,
+      anchorCell: { rowIndex, colId },
+    };
   } else {
-    // Single click
-    newSelectedCells.clear();
-    newSelectedCells.add(cellKey);
+    // Single click - replace selection
+    return {
+      ...currentSelection,
+      selectedCells: new Set([cellKey]),
+      anchorCell: { rowIndex, colId },
+    };
   }
-
-  return {
-    ...currentSelection,
-    selectedCells: newSelectedCells,
-    anchorCell: { rowIndex, colId },
-  };
 }
 
 /**
- * Check if a row is selected
+ * Check if a row is selected - Inlined for performance
  */
 export function isRowSelected(selection: SelectionState, rowIndex: number): boolean {
-  if (selection.allSelected) return true;
-  return selection.selectedRows.has(rowIndex);
+  return selection.allSelected === true || selection.selectedRows.has(rowIndex);
 }
 
 /**
- * Check if a cell is selected
+ * Check if a cell is selected - Inlined for performance
  */
 export function isCellSelected(selection: SelectionState, rowIndex: number, colId: string): boolean {
   return selection.selectedCells.has(`${rowIndex}:${colId}`);
@@ -125,19 +149,19 @@ export function isCellSelected(selection: SelectionState, rowIndex: number, colI
 // Selection Plugin
 // ============================================================================
 
-let pluginApi: GridApi<RowData> | null = null;
+let _pluginApi: GridApi<RowData> | null = null;
 let _pluginConfig: SelectionPluginConfig = {};
 
 export const selectionPlugin: GridPlugin<RowData> = {
   name: 'selection',
 
   init(api: GridApi<RowData>, config?: SelectionPluginConfig) {
-    pluginApi = api;
+    _pluginApi = api;
     _pluginConfig = config || { mode: 'multiple' };
   },
 
   destroy() {
-    pluginApi = null;
+    _pluginApi = null;
     _pluginConfig = {};
   },
 };

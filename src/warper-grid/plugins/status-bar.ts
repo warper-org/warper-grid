@@ -73,34 +73,56 @@ export interface RangeStatistics {
 }
 
 // ============================================================================
-// Status Bar Utilities
+// Status Bar Utilities - Performance Optimized
 // ============================================================================
 
 /**
- * Calculate statistics for selected range
+ * Calculate statistics for selected range - Optimized single-pass algorithm
  */
 export function calculateRangeStatistics(values: CellValue[]): RangeStatistics | null {
-  const numbers = values
-    .filter((v): v is number => typeof v === 'number' && !isNaN(v));
-  
-  if (numbers.length === 0) {
+  const len = values.length;
+  if (len === 0) {
     return {
       sum: 0,
       average: 0,
-      count: values.length,
+      count: 0,
       min: 0,
       max: 0,
     };
   }
   
-  const sum = numbers.reduce((a, b) => a + b, 0);
+  // Single pass through the array
+  let sum = 0;
+  let count = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  
+  for (let i = 0; i < len; i++) {
+    const v = values[i];
+    if (typeof v === 'number' && !isNaN(v)) {
+      sum += v;
+      count++;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+  
+  if (count === 0) {
+    return {
+      sum: 0,
+      average: 0,
+      count: len,
+      min: 0,
+      max: 0,
+    };
+  }
   
   return {
     sum,
-    average: sum / numbers.length,
-    count: values.length,
-    min: Math.min(...numbers),
-    max: Math.max(...numbers),
+    average: sum / count,
+    count: len,
+    min,
+    max,
   };
 }
 

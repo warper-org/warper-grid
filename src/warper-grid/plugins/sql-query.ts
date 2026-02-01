@@ -250,13 +250,16 @@ export function createSqlDatabaseManager<TData extends RowData>(
 }
 
 // ============================================================================
-// SQL Query Plugin
+// SQL Query Plugin - Performance Optimized
 // ============================================================================
 
 export function createSqlQueryPlugin<TData extends RowData>(
   config: SqlQueryConfig = {}
 ): GridPlugin<TData> {
   let manager: SqlDatabaseManager<TData> | null = null;
+  let lastDataRef: TData[] | null = null;
+  let lastDataLength: number = 0;
+  let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   return {
     name: 'sqlQuery',
@@ -266,6 +269,8 @@ export function createSqlQueryPlugin<TData extends RowData>(
       
       // Sync initial data
       const state = api.getState();
+      lastDataRef = state.data;
+      lastDataLength = state.data.length;
       manager.syncData(state.data, state.columns);
       
       // Extend API with SQL query capabilities
@@ -275,17 +280,45 @@ export function createSqlQueryPlugin<TData extends RowData>(
     },
     
     destroy() {
+      if (syncDebounceTimer) {
+        clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = null;
+      }
       if (manager) {
         manager.close();
         manager = null;
       }
+      lastDataRef = null;
+      lastDataLength = 0;
     },
     
-    // Sync data when state changes
+    // Sync data when state changes - Optimized to only sync on actual data changes
     onStateChange(state: GridState<TData>) {
-      if (manager) {
-        manager.syncData(state.data, state.columns);
+      if (!manager) return;
+      
+      // Quick reference check - if same array, data hasn't changed
+      if (state.data === lastDataRef) return;
+      
+      // Secondary check - if length is same and first/last elements match, likely same data
+      if (state.data.length === lastDataLength && lastDataRef) {
+        const firstMatch = state.data.length === 0 || state.data[0] === lastDataRef[0];
+        const lastMatch = state.data.length === 0 || 
+          state.data[state.data.length - 1] === lastDataRef[lastDataRef.length - 1];
+        if (firstMatch && lastMatch) return;
       }
+      
+      // Data has changed - debounce the sync to avoid rapid re-syncs
+      if (syncDebounceTimer) {
+        clearTimeout(syncDebounceTimer);
+      }
+      
+      syncDebounceTimer = setTimeout(() => {
+        if (manager) {
+          lastDataRef = state.data;
+          lastDataLength = state.data.length;
+          manager.syncData(state.data, state.columns);
+        }
+      }, 100);
     },
   };
 }
