@@ -1,8 +1,36 @@
-import { StrictMode, Component } from 'react'
+import { StrictMode, Component, useState, useEffect } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import HomePage from './pages/HomePage.tsx'
+import TermsPage from './pages/TermsPage.tsx'
+import LicensePage from './pages/LicensePage.tsx'
+
+// Simple hash-based router
+function Router() {
+  const [route, setRoute] = useState(() => window.location.hash || '#home');
+
+  useEffect(() => {
+    const handleHashChange = () => setRoute(window.location.hash || '#home');
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  if (route === '#demo' || route === '#app') {
+    return <App />;
+  }
+  
+  if (route === '#terms') {
+    return <TermsPage />;
+  }
+  
+  if (route === '#license') {
+    return <LicensePage />;
+  }
+  
+  return <HomePage />;
+}
 
 // Error boundary to catch and display React errors
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -36,7 +64,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <Router />
     </ErrorBoundary>
   </StrictMode>,
 )
