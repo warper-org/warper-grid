@@ -800,13 +800,13 @@ function App() {
                   </div>
 
                   {/* Row Count Selector */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-(--muted-foreground)">Rows:</label>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <label className="text-xs font-medium text-(--muted-foreground) hidden sm:inline">Rows:</label>
                     <select
                       value={rowCount}
                       onChange={(e) => handleRowCountChange(Number(e.target.value))}
                       disabled={isGenerating || isLiveUpdating}
-                      className="h-7 px-2 text-xs border border-(--border) rounded bg-(--background) text-(--foreground) focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:opacity-50"
+                      className="h-7 px-1.5 sm:px-2 text-xs border border-(--border) rounded bg-(--background) text-(--foreground) focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:opacity-50"
                     >
                       <option value={1000}>1K</option>
                       <option value={10000}>10K</option>
@@ -822,8 +822,8 @@ function App() {
                   </div>
                 </div>
 
-                {/* Center Section: Search */}
-                <div className="flex-1 max-w-sm">
+                {/* Center Section: Search - Hidden on very small screens */}
+                <div className="flex-1 max-w-sm hidden sm:block">
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-(--muted-foreground)" />
                     <input
@@ -838,46 +838,48 @@ function App() {
 
                 {/* Right Section: Actions */}
                 <div className="flex items-center gap-1">
-                  {/* Quick Actions: Scroll + Undo / Redo */}
-                  <Tooltip content="Scroll to top">
-                    <button onClick={() => gridRef.current?.api.scrollToRow(0)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-                      <ArrowUp className="w-3 h-3" />
-                    </button>
-                  </Tooltip>
+                  {/* Quick Actions: Scroll + Undo / Redo - Hidden on mobile */}
+                  <div className="hidden sm:flex items-center gap-1">
+                    <Tooltip content="Scroll to top">
+                      <button onClick={() => gridRef.current?.api.scrollToRow(0)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
 
-                  <Tooltip content="Scroll to bottom">
-                    <button onClick={() => gridRef.current?.api.scrollToRow(data.length - 1)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-                      <ArrowDown className="w-3 h-3" />
-                    </button>
-                  </Tooltip>
+                    <Tooltip content="Scroll to bottom">
+                      <button onClick={() => gridRef.current?.api.scrollToRow(data.length - 1)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
 
-                  <div className="w-px h-4 bg-(--border) mx-1" />
+                    <div className="w-px h-4 bg-(--border) mx-1" />
 
-                  <Tooltip content="Undo (Ctrl+Z)">
-                    <button
-                      onClick={() => gridRef.current?.api.undo?.()}
-                      className={cn(
-                        'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
-                      )}
-                      aria-label="Undo"
-                    >
-                      <CornerUpLeft className="w-3 h-3" />
-                    </button>
-                  </Tooltip>
+                    <Tooltip content="Undo (Ctrl+Z)">
+                      <button
+                        onClick={() => gridRef.current?.api.undo?.()}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                        aria-label="Undo"
+                      >
+                        <CornerUpLeft className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
 
-                  <Tooltip content="Redo (Ctrl+Y)">
-                    <button
-                      onClick={() => gridRef.current?.api.redo?.()}
-                      className={cn(
-                        'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
-                      )}
-                      aria-label="Redo"
-                    >
-                      <CornerDownRight className="w-3 h-3" />
-                    </button>
-                  </Tooltip>
+                    <Tooltip content="Redo (Ctrl+Y)">
+                      <button
+                        onClick={() => gridRef.current?.api.redo?.()}
+                        className={cn(
+                          'h-7 w-7 flex items-center justify-center border rounded transition-colors bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                        )}
+                        aria-label="Redo"
+                      >
+                        <CornerDownRight className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
 
-                  <div className="w-px h-4 bg-(--border) mx-1" />
+                    <div className="w-px h-4 bg-(--border) mx-1" />
+                  </div>
 
                   {/* SQL Query */}
                   <Tooltip content="SQL Query Console">
@@ -895,8 +897,8 @@ function App() {
                     </button>
                   </Tooltip>
 
-                  {/* Plugin Toggles */}
-                  <div className="flex items-center gap-1 ml-1">
+                  {/* Plugin Toggles - Hidden on mobile */}
+                  <div className="hidden md:flex items-center gap-1 ml-1">
                     <Tooltip content="Toggle Filtering">
                       <button
                         onClick={() => togglePlugin('filtering')}
@@ -994,9 +996,9 @@ function App() {
                     </Tooltip>
                   </div>
 
-                  {/* Help */}
+                  {/* Help - Hidden on mobile */}
                   <Tooltip content="Help & Shortcuts">
-                    <button onClick={() => setShowHelp(true)} className="h-7 w-7 flex items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
+                    <button onClick={() => setShowHelp(true)} className="hidden sm:flex h-7 w-7 items-center justify-center border border-(--border) rounded bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
                       <HelpCircle className="w-3 h-3" />
                     </button>
                   </Tooltip>
@@ -1054,7 +1056,7 @@ function App() {
           )}
         </div>
 
-        <footer className="mt-3 flex items-center justify-between">
+        <footer className="mt-3 hidden sm:flex items-center justify-between">
           <StatsDisplay totalRows={rawData.length} renderTime={renderTime} />
 
           <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">

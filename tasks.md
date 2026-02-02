@@ -96,3 +96,9 @@ Based on community feedback from Reddit (r/reactjs) and user testing.
 - [x] Add touch event support for cell selection
 - [x] Improve large dataset warning messages
 - [x] Add mobile-friendly touch targets (min 44px height)
+- [x] Add iOS/Safari specific CSS fixes (webkit-overflow-scrolling, touch-action, zoom prevention)
+- [x] Make SQL Query Panel responsive for mobile (full-screen modal, stacked layouts)
+- [x] Update embedded SQL panel for mobile viewports
+- [x] Add mobile toolbar responsiveness (icon-only buttons, horizontal scroll)
+- [x] Add safe area insets for notched devices (iPhone X, etc.)
+- [x] Add touch-device specific styling (hover:none, pointer:coarse)

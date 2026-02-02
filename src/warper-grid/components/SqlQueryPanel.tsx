@@ -483,35 +483,35 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
   if (embedded) {
     return (
       <div className={cn(
-        'bg-(--card) border border-(--border) rounded-lg overflow-hidden transition-all',
-        isExpanded ? 'h-96' : 'h-56'
+        'warper-sql-panel-embedded bg-(--card) border border-(--border) rounded-lg overflow-hidden transition-all',
+        isExpanded ? 'h-96 sm:h-96 expanded' : 'h-48 sm:h-56'
       )}>
         {/* Mode Tabs */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-(--border) bg-(--muted)/20">
+        <div className="flex items-center justify-between px-2 sm:px-3 py-2 border-b border-(--border) bg-(--muted)/20">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setMode('shallow')}
               className={cn(
-                'flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors',
+                'flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors',
                 mode === 'shallow'
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                   : 'hover:bg-(--accent)'
               )}
             >
               <Filter className="w-3 h-3" />
-              Filter Rows
+              <span className="hidden sm:inline">Filter</span>
             </button>
             <button
               onClick={() => setMode('analysis')}
               className={cn(
-                'flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors',
+                'flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors',
                 mode === 'analysis'
                   ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                   : 'hover:bg-(--accent)'
               )}
             >
               <BarChart3 className="w-3 h-3" />
-              Analysis
+              <span className="hidden sm:inline">SQL</span>
             </button>
           </div>
           
@@ -529,10 +529,10 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
         </div>
         
         {/* Query Input */}
-        <div className="p-2 border-b border-(--border)">
+        <div className="p-1.5 sm:p-2 border-b border-(--border)">
           {mode === 'shallow' ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-(--muted-foreground) whitespace-nowrap">WHERE</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-xs text-(--muted-foreground) whitespace-nowrap hidden sm:inline">WHERE</span>
               <input
                 defaultValue={shallowQueryRef.current}
                 onChange={(e) => { shallowQueryRef.current = e.target.value; }}
@@ -542,33 +542,33 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
                     executeQuery();
                   }
                 }}
-                placeholder="e.g., salary > 100000 AND department = 'Engineering'"
-                className="flex-1 px-2 py-1 text-sm font-mono bg-(--background) border border-(--border) rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                placeholder="e.g., salary > 100000"
+                className="flex-1 px-2 py-1.5 text-xs sm:text-sm font-mono bg-(--background) border border-(--border) rounded focus:ring-1 focus:ring-blue-500 outline-none min-w-0"
               />
               <button
                 onClick={() => executeQuery()}
                 disabled={isExecuting}
-                className="px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
+                className="px-2 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50 shrink-0"
               >
                 {isExecuting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <div className="flex-1" ref={embeddedEditorRef}>
+            <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+              <div className="warper-sql-editor-container flex-1" ref={embeddedEditorRef}>
                 <SqlEditor
                   initialValue={queryRef.current}
                   onExecute={handleExecuteQuery}
                   schema={localSchema}
                   tableName={tableName}
-                  height={isExpanded ? '120px' : '60px'}
+                  height={isExpanded ? '80px' : '50px'}
                   compact
                 />
               </div>
               <button
                 onClick={() => executeQuery()}
                 disabled={isExecuting}
-                className="px-3 py-1 text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50 self-start"
+                className="px-3 py-1.5 text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50 self-end sm:self-start shrink-0"
               >
                 {isExecuting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
               </button>
@@ -577,7 +577,7 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
         </div>
         
         {/* Results */}
-        <div className="flex-1 overflow-auto" style={{ height: isExpanded ? 'calc(100% - 120px)' : 'calc(100% - 88px)' }}>
+        <div className="flex-1 overflow-auto" style={{ height: isExpanded ? 'calc(100% - 110px)' : 'calc(100% - 80px)' }}>
           {result ? (
             result.error ? (
               <div className="p-2 text-xs text-red-600 dark:text-red-400">
@@ -600,54 +600,54 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
   
   // Full modal mode
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="warper-sql-panel-modal fixed inset-0 z-50 flex items-center justify-center p-4 md:p-4 p-0">
+      <div className="warper-sql-panel-modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative w-full max-w-5xl max-h-[90vh] bg-(--background) border border-(--border) rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="warper-sql-panel-modal-content relative w-full max-w-5xl max-h-[90vh] md:max-h-[90vh] h-full md:h-auto bg-(--background) border border-(--border) md:rounded-2xl rounded-none shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-(--border)">
+        <div className="warper-sql-panel-header flex flex-col md:flex-row items-start md:items-center justify-between p-3 md:p-4 border-b border-(--border) gap-2 md:gap-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
               <Database className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-(--foreground)">SQL Query Console</h2>
-              <p className="text-sm text-(--muted-foreground)">Query your grid data with SQL (powered by sql.js)</p>
+              <h2 className="warper-sql-panel-header-title text-base md:text-lg font-bold text-(--foreground)">SQL Query Console</h2>
+              <p className="text-xs md:text-sm text-(--muted-foreground) hidden md:block">Query your grid data with SQL (powered by sql.js)</p>
             </div>
           </div>
           
           {/* Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 p-1 bg-(--muted)/30 rounded-lg">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="warper-sql-mode-toggle flex items-center gap-1 p-1 bg-(--muted)/30 rounded-lg flex-1 md:flex-initial">
               <button
                 onClick={() => setMode('shallow')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors',
+                  'flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors flex-1 md:flex-initial',
                   mode === 'shallow'
                     ? 'bg-blue-600 text-white'
                     : 'text-(--muted-foreground) hover:text-(--foreground)'
                 )}
               >
                 <Filter className="w-4 h-4" />
-                Filter Rows
+                <span className="label hidden sm:inline">Filter Rows</span>
               </button>
               <button
                 onClick={() => setMode('analysis')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors',
+                  'flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors flex-1 md:flex-initial',
                   mode === 'analysis'
                     ? 'bg-purple-600 text-white'
                     : 'text-(--muted-foreground) hover:text-(--foreground)'
                 )}
               >
                 <BarChart3 className="w-4 h-4" />
-                Analysis
+                <span className="label hidden sm:inline">Analysis</span>
               </button>
             </div>
             
             <button
               onClick={onClose}
-              className="p-2 hover:bg-(--accent) rounded-lg transition-colors"
+              className="p-2 hover:bg-(--accent) rounded-lg transition-colors shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
@@ -736,7 +736,7 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
                   onClick={() => executeQuery()}
                   disabled={isExecuting}
                   className={cn(
-                    'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all',
+                    'flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-all shrink-0',
                     isExecuting
                       ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600'
                       : 'bg-purple-600 hover:bg-purple-700 text-white'
@@ -747,8 +747,9 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
                   ) : (
                     <Play className="w-4 h-4" />
                   )}
-                  Run Query
-                  <span className="text-xs opacity-70 ml-1">Ctrl+Enter</span>
+                  <span className="hidden sm:inline">Run Query</span>
+                  <span className="sm:hidden">Run</span>
+                  <span className="text-xs opacity-70 ml-1 hidden md:inline">Ctrl+Enter</span>
                 </button>
               </div>
             </div>
@@ -760,7 +761,7 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
               <div className="text-sm font-medium text-(--foreground) mb-2">
                 {mode === 'shallow' ? 'Example Filters' : 'Sample Queries'}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              <div className="warper-sql-samples-grid grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {sampleQueries.map((sample, i) => (
                   <button
                     key={i}
@@ -777,7 +778,7 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
                       }
                       setShowSamples(false);
                     }}
-                    className="text-left px-3 py-2 text-sm font-mono bg-(--background) hover:bg-(--accent) border border-(--border) rounded transition-colors truncate"
+                    className="text-left px-3 py-2 text-xs sm:text-sm font-mono bg-(--background) hover:bg-(--accent) border border-(--border) rounded transition-colors truncate"
                   >
                     {sample}
                   </button>
@@ -815,7 +816,7 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Results header */}
           {result && (
-            <div className="flex items-center justify-between px-4 py-2 border-b border-(--border) bg-(--muted)/20">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between px-3 md:px-4 py-2 border-b border-(--border) bg-(--muted)/20 gap-2 md:gap-0">
               <div className="flex items-center gap-4">
                 {result.error ? (
                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
@@ -836,28 +837,28 @@ export function SqlQueryPanel<TData extends RowData = RowData>({
               </div>
               
               {!result.error && result.columns.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="warper-sql-results-actions flex flex-wrap items-center gap-1 md:gap-2">
                   <button
                     onClick={copyResults}
-                    className="flex items-center gap-1.5 px-2 py-1 text-sm hover:bg-(--accent) rounded transition-colors"
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs md:text-sm hover:bg-(--accent) rounded transition-colors"
                   >
                     <Copy className="w-4 h-4" />
-                    Copy
+                    <span className="hidden sm:inline">Copy</span>
                   </button>
                   <button
                     onClick={exportResults}
-                    className="flex items-center gap-1.5 px-2 py-1 text-sm hover:bg-(--accent) rounded transition-colors"
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs md:text-sm hover:bg-(--accent) rounded transition-colors"
                   >
                     <Download className="w-4 h-4" />
-                    Export CSV
+                    <span className="hidden sm:inline">Export CSV</span>
                   </button>
                   {(onApplyResults || onFilterByQuery) && (
                     <button
                       onClick={applyToGrid}
-                      className="flex items-center gap-1.5 px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors"
+                      className="flex items-center gap-1.5 px-2 md:px-3 py-1 text-xs md:text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors"
                     >
                       <Layers className="w-4 h-4" />
-                      Apply to Grid
+                      <span className="hidden sm:inline">Apply to Grid</span>
                     </button>
                   )}
                 </div>

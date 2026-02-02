@@ -30,17 +30,17 @@ export function GridPagination<TData extends RowData>({
   availableSizes = Array.from(new Set(availableSizes)).filter(x => x > 0 && x <= totalRows).sort((a, b) => a - b);
 
   return (
-    <div className="warper-grid-pagination">
+    <div className="warper-grid-pagination flex-col sm:flex-row gap-2 sm:gap-4">
       {/* Page info */}
-      <div className="text-sm text-[var(--muted-foreground)]">
-        Showing {pagination.startRow} to {pagination.endRow} of {pagination.totalRows} rows
+      <div className="text-xs sm:text-sm text-[var(--muted-foreground)] whitespace-nowrap">
+        <span className="hidden sm:inline">Showing </span>{pagination.startRow}-{pagination.endRow}<span className="hidden sm:inline"> of</span><span className="sm:hidden">/</span> {pagination.totalRows}
       </div>
 
       {/* Page controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center sm:justify-end">
         {/* Page size selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-[var(--muted-foreground)]">Rows per page:</span>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="text-xs sm:text-sm text-[var(--muted-foreground)] hidden sm:inline">Rows per page:</span>
           <select
             value={pagination.pageSize === totalRows ? 'All' : pagination.pageSize}
             onChange={e => {
@@ -53,7 +53,7 @@ export function GridPagination<TData extends RowData>({
               const value = val === 'All' ? totalRows : Number(val);
               pagination.setPageSize(value);
             }}
-            className="h-8 px-2 text-sm border border-[var(--border)] rounded bg-[var(--background)] text-[var(--foreground)]"
+            className="h-7 sm:h-8 px-1.5 sm:px-2 text-xs sm:text-sm border border-[var(--border)] rounded bg-[var(--background)] text-[var(--foreground)]"
           >
             {availableSizes.map((size) => (
               <option key={size} value={size === totalRows ? 'All' : size}>
@@ -67,33 +67,33 @@ export function GridPagination<TData extends RowData>({
         </div>
 
         {/* Navigation buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {/* First page */}
           <button
             onClick={pagination.firstPage}
             disabled={pagination.isFirstPage}
-            className="h-8 w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="First page"
           >
-            <ChevronsLeft className="h-4 w-4" />
+            <ChevronsLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
 
           {/* Previous page */}
           <button
             onClick={pagination.previousPage}
             disabled={!pagination.hasPrevPage}
-            className="h-8 w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
 
           {/* Page numbers */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             {pagination.pageNumbers.map((page, index) => {
               if (page === 'ellipsis') {
                 return (
-                  <span key={`ellipsis-${index}`} className="px-2 text-[var(--muted-foreground)]">
+                  <span key={`ellipsis-${index}`} className="px-1 sm:px-2 text-[var(--muted-foreground)] text-xs sm:text-sm">
                     ...
                   </span>
                 );
@@ -104,7 +104,7 @@ export function GridPagination<TData extends RowData>({
                 <button
                   key={page}
                   onClick={() => pagination.setPage(page)}
-                  className={`h-8 min-w-8 px-2 flex items-center justify-center border rounded text-sm ${
+                  className={`h-7 min-w-7 sm:h-8 sm:min-w-8 px-1.5 sm:px-2 flex items-center justify-center border rounded text-xs sm:text-sm ${
                     isCurrentPage
                       ? 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]'
                       : 'border-[var(--border)] hover:bg-[var(--accent)]'
@@ -120,20 +120,20 @@ export function GridPagination<TData extends RowData>({
           <button
             onClick={pagination.nextPage}
             disabled={!pagination.hasNextPage}
-            className="h-8 w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
 
           {/* Last page */}
           <button
             onClick={pagination.lastPage}
             disabled={pagination.isLastPage}
-            className="h-8 w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center border border-[var(--border)] rounded hover:bg-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Last page"
           >
-            <ChevronsRight className="h-4 w-4" />
+            <ChevronsRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>

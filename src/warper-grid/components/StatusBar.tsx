@@ -222,14 +222,14 @@ export function StatusBar<TData extends RowData = RowData>({
         ))}
       </div>
       
-      <div className="warper-status-bar-center">
+      <div className="warper-status-bar-center hidden sm:flex">
         {centerPanels.map((config) => (
           <React.Fragment key={config.id}>
             {renderPanel(config, { ...panelParams, params: config.params || {} })}
           </React.Fragment>
         ))}
         
-        {/* Warper Grid Branding */}
+        {/* Warper Grid Branding - hidden on mobile */}
         <span className="warper-status-brand">
           <Sparkles className="w-3 h-3 text-emerald-500" />
           <span>Warper Grid</span>

@@ -159,9 +159,14 @@ html, body {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    /* Improve touch responsiveness */
-    touch-action: pan-x pan-y;
+    /* Enable all touch gestures freely */
+    touch-action: pan-x pan-y pinch-zoom;
     -webkit-tap-highlight-color: transparent;
+    /* Hardware acceleration for smooth rendering */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   .warper-grid-header {
@@ -243,12 +248,20 @@ html, body {
 
   .warper-grid-body {
     @apply flex-1 overflow-auto;
-    /* Enable smooth native scrolling on touch devices */
+    /* Buttery smooth native scrolling */
     -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
+    /* Use native scroll - no CSS smooth behavior which causes jank */
+    scroll-behavior: auto;
     /* Show scrollbars for better UX */
     scrollbar-width: thin; /* Firefox */
     scrollbar-color: var(--muted-foreground) transparent;
+    /* GPU acceleration */
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+    /* Prevent scroll chaining */
+    overscroll-behavior: contain;
+    /* Free scrolling in all directions */
+    touch-action: pan-x pan-y;
   }
   /* WebKit scrollbar styling - visible but subtle */
   .warper-grid-body::-webkit-scrollbar {
@@ -268,12 +281,17 @@ html, body {
     background-color: var(--foreground);
   }
   .warper-grid-header-scroll {
-    /* Enable smooth scrolling for header sync */
+    /* Buttery smooth horizontal scrolling for header sync */
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    /* GPU acceleration */
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+    touch-action: pan-x;
   }
   .warper-grid-header-scroll::-webkit-scrollbar {
     height: 0px;
@@ -759,16 +777,20 @@ html, body {
   }
 
   .warper-status-bar {
-    @apply flex-wrap gap-2 py-2;
-  }
-
-  .warper-status-bar-center {
-    @apply order-first w-full justify-start;
+    @apply flex-row gap-2 py-1.5 px-2;
   }
 
   .warper-status-bar-left,
   .warper-status-bar-right {
-    @apply flex-1;
+    @apply flex-1 gap-2;
+  }
+
+  .warper-status-bar-center {
+    @apply hidden;
+  }
+
+  .warper-grid-pagination {
+    @apply flex-col gap-2 py-2 px-2;
   }
 
   .warper-chip {
@@ -801,5 +823,213 @@ html, body {
   .warper-grid-cell {
     /* Even larger touch targets on small screens */
     min-height: 48px;
+  }
+}
+
+/* ===== iOS / Safari Specific Fixes ===== */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific */
+  .warper-grid {
+    /* Fix iOS rubber-banding issues */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent iOS zoom on double-tap */
+    touch-action: manipulation;
+  }
+  
+  .warper-grid-body {
+    /* Buttery smooth iOS momentum scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* GPU layer for smooth scrolling */
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+  }
+  
+  /* Fix iOS input zoom - prevent zoom on focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Fix iOS button appearance */
+  button {
+    -webkit-appearance: none;
+  }
+}
+
+/* ===== SQL Panel Mobile Responsive ===== */
+.warper-sql-panel-modal {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+}
+
+.warper-sql-panel-modal-backdrop {
+  @apply absolute inset-0 bg-black/50 backdrop-blur-sm;
+}
+
+.warper-sql-panel-modal-content {
+  @apply relative w-full max-w-5xl max-h-[90vh] bg-(--background) border border-(--border) rounded-2xl shadow-2xl overflow-hidden flex flex-col;
+}
+
+@media (max-width: 768px) {
+  .warper-sql-panel-modal {
+    @apply p-0;
+  }
+  
+  .warper-sql-panel-modal-content {
+    @apply max-w-full max-h-full h-full rounded-none;
+  }
+  
+  /* SQL panel header - mobile optimized */
+  .warper-sql-panel-header {
+    @apply flex-col gap-2 p-3;
+  }
+  
+  .warper-sql-panel-header-title {
+    @apply text-base;
+  }
+  
+  /* Mode toggle buttons - full width on mobile */
+  .warper-sql-mode-toggle {
+    @apply w-full flex;
+  }
+  
+  .warper-sql-mode-toggle button {
+    @apply flex-1 justify-center;
+  }
+  
+  /* SQL editor - reduced height on mobile */
+  .warper-sql-editor-container {
+    max-height: 100px;
+  }
+  
+  /* Results action buttons - stack on mobile */
+  .warper-sql-results-actions {
+    @apply flex-wrap gap-1;
+  }
+  
+  .warper-sql-results-actions button {
+    @apply text-xs px-2 py-1;
+  }
+}
+
+@media (max-width: 480px) {
+  /* SQL panel embedded - even more compact */
+  .warper-sql-panel-embedded {
+    @apply h-48;
+  }
+  
+  .warper-sql-panel-embedded.expanded {
+    @apply h-72;
+  }
+  
+  /* Hide labels on very small screens, show only icons */
+  .warper-sql-mode-toggle span.label {
+    @apply hidden;
+  }
+  
+  /* Sample queries - single column on mobile */
+  .warper-sql-samples-grid {
+    @apply grid-cols-1;
+  }
+}
+
+/* ===== Mobile Touch Improvements ===== */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch devices - larger hit targets */
+  .warper-grid-header-cell {
+    @apply py-3;
+    min-height: 48px;
+  }
+  
+  /* Remove hover states that don't work well on touch */
+  .warper-grid-row:hover {
+    background: transparent;
+  }
+  
+  /* Make buttons more tap-friendly */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Increase pagination button size */
+  .warper-grid-pagination button {
+    @apply px-4 py-2;
+  }
+  
+  /* Ensure scrollbars are visible on touch */
+  .warper-grid-body {
+    scrollbar-width: thin;
+  }
+  
+  /* Context menu - larger items on touch */
+  .warper-context-menu-item {
+    @apply py-3;
+    min-height: 48px;
+  }
+  
+  /* Column menu - larger items */
+  .warper-column-menu-item {
+    @apply py-3;
+    min-height: 48px;
+  }
+}
+
+/* ===== Toolbar Mobile Responsive ===== */
+.warper-grid-toolbar {
+  @apply flex flex-wrap items-center gap-2 p-2;
+}
+
+@media (max-width: 768px) {
+  .warper-grid-toolbar {
+    @apply flex-wrap gap-1 p-1.5;
+  }
+  
+  .warper-grid-toolbar button {
+    @apply text-xs px-2 py-1.5;
+  }
+  
+  .warper-grid-toolbar-group {
+    @apply flex flex-wrap gap-1;
+  }
+  
+  /* Hide text labels on toolbar buttons, show icons only */
+  .warper-grid-toolbar .btn-label {
+    @apply hidden;
+  }
+  
+  /* Reduce icon sizes */
+  .warper-grid-toolbar svg {
+    @apply w-4 h-4;
+  }
+}
+
+@media (max-width: 480px) {
+  .warper-grid-toolbar {
+    @apply overflow-x-auto pb-2;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .warper-grid-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .warper-grid-toolbar button {
+    @apply shrink-0;
+  }
+}
+
+/* ===== Safe Area Insets for Notched Devices ===== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .warper-sql-panel-modal-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .warper-status-bar {
+    padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+  }
+  
+  .warper-grid-pagination {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }

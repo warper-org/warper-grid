@@ -127,9 +127,9 @@ export function GridHeader<TData extends RowData>({
                 }}
                 onClick={() => isSortable && handleSort(col.id)}
               >
-                {/* Drag Handle */}
+                {/* Drag Handle - Hidden on mobile */}
                 <span
-                  className="drag-handle mr-1 shrink-0 cursor-grab hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5"
+                  className="drag-handle mr-1 shrink-0 cursor-grab hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 hidden sm:inline-flex"
                   title="Drag to move column"
                   tabIndex={0}
                   role="button"
@@ -156,9 +156,12 @@ export function GridHeader<TData extends RowData>({
                   )}
                 </span>
 
-                {/* Sort Indicator */}
+                {/* Sort Indicator - Only show when sorted on mobile */}
                 {isSortable && (
-                  <span className="ml-1 shrink-0">
+                  <span className={cn(
+                    "ml-1 shrink-0",
+                    !sortDirection && "hidden sm:inline-flex"
+                  )}>
                     {sortDirection === 'asc' ? (
                       <ArrowUp className="h-4 w-4" />
                     ) : sortDirection === 'desc' ? (
@@ -169,18 +172,18 @@ export function GridHeader<TData extends RowData>({
                   </span>
                 )}
 
-                {/* Column Menu Button */}
+                {/* Column Menu Button - Hidden on mobile */}
                 <button
-                  className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:block"
                   onClick={(e) => handleOpenColumnMenu(e, col.id)}
                   title="Column menu"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
 
-                {/* Filter Indicator */}
+                {/* Filter Indicator - Hidden on mobile */}
                 {col.filterable && (
-                  <span className="ml-1 shrink-0 opacity-50">
+                  <span className="ml-1 shrink-0 opacity-50 hidden sm:inline-flex">
                     <Filter className="h-3 w-3" />
                   </span>
                 )}

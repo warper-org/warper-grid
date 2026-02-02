@@ -37,23 +37,23 @@ export function GridToolbar<TData extends RowData>({
   }, [api]);
 
   return (
-    <div className="warper-grid-toolbar flex items-center gap-4 px-4 py-2 border-b border-[var(--border)] bg-[var(--muted)]">
+    <div className="warper-grid-toolbar flex flex-wrap items-center gap-2 sm:gap-4 px-2 sm:px-4 py-2 border-b border-[var(--border)] bg-[var(--muted)]">
       {/* Quick Filter */}
       {showQuickFilter && (
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 min-w-[150px] max-w-md order-1 sm:order-none w-full sm:w-auto">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
+            <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)]" />
             <input
               type="text"
-              placeholder={'Quick filter (supports /regex/, -negation, "phrase", OR with |)'}
+              placeholder={'Quick filter...'}
               value={quickFilterValue}
               onChange={(e) => handleQuickFilterChange(e.target.value)}
-              className="w-full h-9 pl-9 pr-9 text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="w-full h-9 pl-8 sm:pl-9 pr-8 sm:pr-9 text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             />
             {quickFilterValue && (
               <button
                 onClick={clearQuickFilter}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -62,36 +62,36 @@ export function GridToolbar<TData extends RowData>({
         </div>
       )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Spacer - hidden on mobile */}
+      <div className="hidden sm:block flex-1" />
 
       {/* Actions */}
-      <div className="flex items-center gap-2">
+      <div className="warper-grid-toolbar-group flex items-center gap-1 sm:gap-2 order-2 sm:order-none">
         <button
           onClick={() => api.undo?.()}
           disabled={!api.canUndo?.()}
-          className="h-9 px-3 flex items-center gap-2 text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-50"
+          className="h-8 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-50"
           title="Undo (Ctrl+Z)"
         >
-          ⎌ Undo
+          ⎌ <span className="btn-label hidden sm:inline">Undo</span>
         </button>
 
         <button
           onClick={() => api.redo?.()}
           disabled={!api.canRedo?.()}
-          className="h-9 px-3 flex items-center gap-2 text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-50"
+          className="h-8 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)] disabled:opacity-50"
           title="Redo (Ctrl+Y)"
         >
-          ↺ Redo
+          ↺ <span className="btn-label hidden sm:inline">Redo</span>
         </button>
 
         {showExport && (
           <button
             onClick={handleExport}
-            className="h-9 px-3 flex items-center gap-2 text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)]"
+            className="h-8 sm:h-9 px-2 sm:px-3 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm border border-[var(--border)] rounded-md bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)]"
           >
             <Download className="h-4 w-4" />
-            Export
+            <span className="btn-label hidden sm:inline">Export</span>
           </button>
         )}
       </div>
