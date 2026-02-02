@@ -1,17 +1,10 @@
 {
   "name": "@itsmeadarsh/warper-grid",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "A professional, feature-rich React data grid with TypeScript support, modular plugins, and beautiful UI",
-  "author": "Adarsh <adarsh@warper.tech>",
-  "license": "SEE LICENSE IN LICENSE",
+  "author": "Adarsh Gourab Mahalik <e2vylu0d0@mozmail.com>",
+  "license": "Proprietary",
   "homepage": "https://grid.warper.tech",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/warper-org/warper-grid.git"
-  },
-  "bugs": {
-    "url": "https://github.com/warper-org/warper-grid/issues"
-  },
   "keywords": [
     "react",
     "data-grid",
@@ -41,7 +34,15 @@
     "./styles": "./dist/warper-grid.css"
   },
   "files": [
-    "dist",
+    "dist/warper-grid.js",
+    "dist/warper-grid.js.map",
+    "dist/warper-grid.cjs",
+    "dist/warper-grid.cjs.map",
+    "dist/warper-grid",
+    "dist/warper_wasm*.js",
+    "dist/warper_wasm*.cjs",
+    "dist/warper_wasm*.map",
+    "dist/warper_wasm_bg.wasm",
     "README.md"
   ],
   "scripts": {
