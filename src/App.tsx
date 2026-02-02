@@ -6,7 +6,7 @@ import { SqlQueryPanel } from './warper-grid/components/SqlQueryPanel';
 import GroupPanel from './warper-grid/components/GroupPanel';
 import { useLiveUpdate, type LiveUpdateConfig } from './warper-grid/components/LiveUpdatePanel';
 import { createSqlDatabaseManager, type SqlDatabaseManager } from './warper-grid/plugins/sql-query';
-import { Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, Clipboard, Edit3, Filter, ArrowUpDown, Columns3, FileSpreadsheet, CheckSquare, Grid3X3, Zap, ExternalLink, Github, Sparkles, LayoutGrid, Download, RefreshCw, ArrowUp, ArrowDown, CornerUpLeft, CornerDownRight, Search, Database, Play, Pause, List } from 'lucide-react';
+import { Moon, Sun, HelpCircle, X, Keyboard, MousePointer2, Clipboard, Edit3, Filter, ArrowUpDown, Columns3, FileSpreadsheet, CheckSquare, Grid3X3, Zap, ExternalLink, Sparkles, LayoutGrid, Download, RefreshCw, ArrowUp, ArrowDown, CornerUpLeft, CornerDownRight, Search, Database, Play, Pause, List } from 'lucide-react';
 
 // ============================================================================
 // Demo Data Types
@@ -747,12 +747,6 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Tooltip content="View on GitHub">
-                <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors">
-                  <Github className="w-4 h-4" />
-                </a>
-              </Tooltip>
-
               <Tooltip content={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
                 <button onClick={() => setIsDark(!isDark)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-(--border) bg-(--background) text-(--foreground) hover:bg-(--accent) transition-colors" aria-label="Toggle dark mode">
                   {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -1064,12 +1058,6 @@ function App() {
           <StatsDisplay totalRows={rawData.length} renderTime={renderTime} />
 
           <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">
-            <a href="https://github.com/warper-org/warper-grid" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-              <Github className="w-3 h-3" />
-              <span>GitHub</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-            <span>•</span>
             <span>Powered by <strong className="text-emerald-600 dark:text-emerald-400">Warper WASM</strong></span>
           </div>
         </footer>

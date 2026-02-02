@@ -864,22 +864,7 @@ function Documentation() {
           ))}
         </div>
 
-        {/* GitHub Link */}
-        <div className="mt-10 sm:mt-12 text-center">
-          <p className="text-zinc-500 text-sm mb-4">
-            Looking for the full README?
-          </p>
-          <a 
-            href="https://github.com/warper-org/warper-grid"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-all duration-300"
-          >
-            <FileText className="w-4 h-4" />
-            View on GitHub
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
+
       </div>
     </section>
   );
