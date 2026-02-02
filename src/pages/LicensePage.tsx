@@ -225,7 +225,7 @@ export default function LicensePage() {
             <h2 className="text-2xl font-bold mb-4 text-white">10. General Provisions</h2>
             <ul className="space-y-4 text-zinc-400">
               <li><strong className="text-white">Governing Law:</strong> This Agreement is governed by the laws of 
-              the State of Delaware, USA, without regard to conflict of law principles.</li>
+              India, without regard to conflict of law principles. Any disputes shall be subject to the exclusive jurisdiction of the courts located in India.</li>
               <li><strong className="text-white">Entire Agreement:</strong> This Agreement constitutes the entire 
               agreement between the parties and supersedes all prior negotiations and agreements.</li>
               <li><strong className="text-white">Severability:</strong> If any provision is found unenforceable, 

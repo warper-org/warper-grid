@@ -142,9 +142,9 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-4 text-white">12. Governing Law</h2>
             <p className="text-zinc-400 leading-relaxed">
-              These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, 
-              United States, without regard to its conflict of law provisions. Any disputes shall be resolved in 
-              the courts of Delaware.
+              These Terms shall be governed by and construed in accordance with the laws of India, 
+              without regard to its conflict of law provisions. Any disputes shall be subject to the 
+              exclusive jurisdiction of the courts located in India.
             </p>
           </section>
 

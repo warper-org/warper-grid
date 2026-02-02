@@ -62,6 +62,7 @@ interface GridCellProps<TData extends RowData> {
   onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
   onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
   onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  onCellTouchStart?: (rowIndex: number, colId: string, event: React.TouchEvent) => void;
   globalCellStyle?: WarperGridProps<TData>['cellStyle'];
 }
 
@@ -78,6 +79,7 @@ function GridCellInner<TData extends RowData>({
   onCellDoubleClick,
   onCellMouseDown,
   onCellMouseEnter,
+  onCellTouchStart,
   globalCellStyle,
 }: GridCellProps<TData>) {
   const value = col.field
@@ -126,6 +128,7 @@ function GridCellInner<TData extends RowData>({
       onDoubleClick={onCellDoubleClick ? (e) => { e.stopPropagation(); onCellDoubleClick(rowIndex, col.id, value, rowData, e); } : undefined}
       onMouseDown={onCellMouseDown ? (e) => { onCellMouseDown(rowIndex, col.id, e); } : undefined}
       onMouseEnter={onCellMouseEnter ? (e) => { onCellMouseEnter(rowIndex, col.id, e); } : undefined}
+      onTouchStart={onCellTouchStart ? (e) => { onCellTouchStart(rowIndex, col.id, e); } : undefined}
     >
       {col.cellRenderer ? (
         (col.cellRenderer as (params: CellRendererParams<TData>) => ReactNode)({
@@ -204,6 +207,7 @@ interface GridRowProps<TData extends RowData> {
   onCellDoubleClick?: (rowIndex: number, colId: string, value: CellValue, data: TData, event: React.MouseEvent) => void;
   onCellMouseDown?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
   onCellMouseEnter?: (rowIndex: number, colId: string, event: React.MouseEvent) => void;
+  onCellTouchStart?: (rowIndex: number, colId: string, event: React.TouchEvent) => void;
   globalCellStyle?: WarperGridProps<TData>['cellStyle'];
 }
 
@@ -226,6 +230,7 @@ function GridRowInner<TData extends RowData>({
   onCellDoubleClick,
   onCellMouseDown,
   onCellMouseEnter,
+  onCellTouchStart,
   globalCellStyle,
 }: GridRowProps<TData>) {
   // All rows are now flat SQL results. Render as normal rows.
@@ -267,6 +272,7 @@ function GridRowInner<TData extends RowData>({
             onCellDoubleClick={onCellDoubleClick}
             onCellMouseDown={onCellMouseDown}
             onCellMouseEnter={onCellMouseEnter}
+            onCellTouchStart={onCellTouchStart}
             globalCellStyle={globalCellStyle}
           />
         );
@@ -420,17 +426,32 @@ function WarperGridInner<TData extends RowData>(
     pluginManagerRef.current!.init(api);
   }, [api]);
 
-  // Warn about large datasets without pagination
+  // Warn about large datasets without pagination - with throttling to avoid spam
+  const warnedAboutLargeDataset = useRef(false);
   useEffect(() => {
     const isPaginationEnabled = pluginManagerRef.current!.isLoaded('pagination');
-    if (state.data.length > maxClientSideRows && !isPaginationEnabled) {
+    const isLargeDataset = state.data.length > maxClientSideRows;
+    
+    if (isLargeDataset && !isPaginationEnabled && !warnedAboutLargeDataset.current) {
+      warnedAboutLargeDataset.current = true;
       console.warn(
-        `WarperGrid: Large dataset detected (${state.data.length} rows). ` +
-        'For better performance, consider enabling the pagination plugin. ' +
-        'Client-side processing is limited to avoid browser crashes.'
+        `⚠️ WarperGrid Performance Warning:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `Large dataset detected: ${state.data.length.toLocaleString()} rows\n` +
+        `Maximum recommended for client-side: ${maxClientSideRows.toLocaleString()} rows\n\n` +
+        `Recommendations:\n` +
+        `  1. Enable pagination plugin: attach(['pagination'])\n` +
+        `  2. Use server-side filtering/sorting for better performance\n` +
+        `  3. Consider reducing dataset size or implementing virtual scrolling\n\n` +
+        `Note: Client-side sorting/filtering is disabled for datasets exceeding the limit.`
       );
     }
-  }, [state.data.length, maxClientSideRows, api]);
+    
+    // Reset warning flag if dataset becomes smaller
+    if (!isLargeDataset) {
+      warnedAboutLargeDataset.current = false;
+    }
+  }, [state.data.length, maxClientSideRows]);
 
   // Expose ref methods
   useImperativeHandle(ref, () => ({
@@ -877,16 +898,42 @@ function WarperGridInner<TData extends RowData>(
     }));
   }, [cellSelection.isSelecting, cellSelection.anchorCell, computedColumns]);
 
-  // Global mouse up handler for ending selection
+  // Touch handler for cell selection on mobile - maps to mouse down behavior
+  const handleCellTouchStart = useCallback((rowIndex: number, colId: string, _event: React.TouchEvent) => {
+    // On touch, select the single cell (simpler than mouse for mobile UX)
+    const cellKey = `${rowIndex}:${colId}`;
+    const newPosition: CellPosition = { rowIndex, colId };
+    
+    setCellSelection({
+      selectedCells: new Set([cellKey]),
+      activeCell: newPosition,
+      anchorCell: newPosition,
+      isSelecting: false, // Don't start drag selection on touch - let native scroll work
+    });
+  }, []);
+
+  // Global mouse/touch up handler for ending selection - handles both mouse and touch
   useEffect(() => {
-    const handleMouseUp = () => {
+    const handleSelectionEnd = () => {
       if (cellSelection.isSelecting) {
         setCellSelection(prev => ({ ...prev, isSelecting: false }));
       }
     };
     
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
+    // Listen for both mouse and touch end events
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd);
+    document.addEventListener('touchcancel', handleSelectionEnd);
+    
+    // Also handle when mouse leaves the window
+    document.addEventListener('mouseleave', handleSelectionEnd);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleSelectionEnd);
+      document.removeEventListener('touchend', handleSelectionEnd);
+      document.removeEventListener('touchcancel', handleSelectionEnd);
+      document.removeEventListener('mouseleave', handleSelectionEnd);
+    };
   }, [cellSelection.isSelecting]);
 
   // Clipboard state for cut operation
@@ -1398,6 +1445,7 @@ function WarperGridInner<TData extends RowData>(
                     onCellDoubleClick={onCellDoubleClick ? handleCellDoubleClick : undefined}
                     onCellMouseDown={handleCellMouseDown}
                     onCellMouseEnter={handleCellMouseEnter}
+                    onCellTouchStart={handleCellTouchStart}
                   />
                 );
               })}

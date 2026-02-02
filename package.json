@@ -5,6 +5,13 @@
   "author": "Adarsh Gourab Mahalik <e2vylu0d0@mozmail.com>",
   "license": "Proprietary",
   "homepage": "https://grid.warper.tech",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warper-org/warper-grid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/warper-org/warper-grid/issues"
+  },
   "keywords": [
     "react",
     "data-grid",

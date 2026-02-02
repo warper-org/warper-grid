@@ -159,6 +159,9 @@ html, body {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    /* Improve touch responsiveness */
+    touch-action: pan-x pan-y;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .warper-grid-header {
@@ -240,20 +243,35 @@ html, body {
 
   .warper-grid-body {
     @apply flex-1 overflow-auto;
-    /* Hide scrollbars while keeping scroll functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE 10+ */
+    /* Enable smooth native scrolling on touch devices */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* Show scrollbars for better UX */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--muted-foreground) transparent;
   }
-  /* WebKit horizontal/vertical scrollbar hiding */
+  /* WebKit scrollbar styling - visible but subtle */
   .warper-grid-body::-webkit-scrollbar {
-    width: 0px;
-    height: 0px;
-    display: none;
+    width: 8px;
+    height: 8px;
+  }
+  .warper-grid-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .warper-grid-body::-webkit-scrollbar-thumb {
+    background-color: var(--muted-foreground);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .warper-grid-body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--foreground);
   }
   .warper-grid-header-scroll {
-    /* Hide header scrollbars (horizontal only) */
+    /* Enable smooth scrolling for header sync */
     overflow-x: auto;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -723,6 +741,23 @@ html, body {
 
 /* ===== Responsive Styles ===== */
 @media (max-width: 768px) {
+  .warper-grid-body {
+    /* Ensure smooth momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .warper-grid-row {
+    /* Larger touch targets on mobile */
+    min-height: 44px;
+  }
+
+  .warper-grid-cell {
+    /* Better touch targets */
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
   .warper-status-bar {
     @apply flex-wrap gap-2 py-2;
   }
@@ -761,5 +796,10 @@ html, body {
 
   .warper-chip {
     @apply px-1 py-0;
+  }
+
+  .warper-grid-cell {
+    /* Even larger touch targets on small screens */
+    min-height: 48px;
   }
 }

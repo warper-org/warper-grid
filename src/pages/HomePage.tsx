@@ -30,7 +30,8 @@ import {
   Palette,
   Puzzle,
   Settings,
-  Rocket
+  Rocket,
+  Github
 } from 'lucide-react';
 import { CodeBlock } from '../components/CodeBlock';
 import { getAppUrl } from '../lib/url';
@@ -1174,6 +1175,15 @@ function Footer() {
             © 2026 WarperGrid. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
+            <a 
+              href="https://github.com/warper-org/warper-grid"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-zinc-500 hover:text-emerald-400 text-xs sm:text-sm transition-colors"
+            >
+              <Github className="w-3 h-3" />
+              GitHub
+            </a>
             <a 
               href="https://discord.gg/WC5npzPx3s"
               target="_blank"
