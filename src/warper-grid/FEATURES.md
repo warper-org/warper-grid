@@ -30,6 +30,24 @@ Plugins
   - sorting, filtering, pagination, selection, columnResizing, columnMoving, export, contextMenu, clipboard, columnMenu, cellEditing, statusBar
 - To customize behavior, pass plugin config when attaching, e.g. `gridRef.current?.attach(['clipboard'], { clipboard: { includeHeaders: true } })`
 
+Export Formats
+- **CSV Export**: `api.exportToCsv()` or context menu → Export → CSV Export
+- **Excel Export**: `api.exportToExcel()` or context menu → Export → Excel Export
+  - Supports styled headers, auto-width columns, and alternate row colors
+  - Options: `{ sheetName, includeStyles, headerBgColor, alternateRowColor, autoWidth }`
+- **JSON Export**: `api.exportToJson()` or context menu → Export → JSON Export
+  - Options: `{ pretty, includeMetadata }` - set `includeMetadata: true` to include column definitions
+- **PDF Export**: `api.exportToPdf()` or context menu → Export → PDF Export
+  - Options: `{ orientation, pageSize, title, fontSize, headerBgColor, alternateRowColors }`
+- All export methods support `onlySelected: true` to export only selected rows
+
+Column Pinning
+- Pin columns to left or right via:
+  - Column menu → Pin Column → Pin Left/Pin Right
+  - Context menu → Pin Column → Pin Left/Pin Right
+  - API: `api.setColumnPinned(colId, 'left' | 'right' | false)`
+- Pinned columns stay visible when scrolling horizontally
+
 Notes & Roadmap
 - Range paste/apply and advanced clipboard paste behavior will be extended to support multi-cell paste in a future update.
 - Formula support uses formulajs where available; some functions have limited behavior (array arguments, ranges).

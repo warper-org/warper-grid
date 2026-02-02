@@ -186,6 +186,50 @@ export function getDefaultColumnMenuItems<TData extends RowData = RowData>(): Co
         params.closeMenu();
       },
     },
+    {
+      id: 'separator4',
+      name: '',
+      separator: true,
+    },
+    // Export
+    {
+      id: 'export',
+      name: 'Export',
+      subMenu: [
+        {
+          id: 'exportCsv',
+          name: 'CSV Export',
+          action: (params) => {
+            params.api.exportToCsv();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportExcel',
+          name: 'Excel Export',
+          action: async (params) => {
+            await params.api.exportToExcel();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportJson',
+          name: 'JSON Export',
+          action: (params) => {
+            params.api.exportToJson();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportPdf',
+          name: 'PDF Export',
+          action: async (params) => {
+            await params.api.exportToPdf();
+            params.closeMenu();
+          },
+        },
+      ],
+    },
   ];
 }
 

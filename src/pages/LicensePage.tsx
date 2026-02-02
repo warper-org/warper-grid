@@ -244,7 +244,7 @@ export default function LicensePage() {
             </p>
             <div className="mt-4 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
               <p className="font-semibold text-white">Warper Technologies</p>
-              <p className="text-emerald-400">licensing@warpergrid.com</p>
+              <p className="text-emerald-400">e2vylu0d0@mozmail.com</p>
             </div>
           </section>
 

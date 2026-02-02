@@ -119,13 +119,70 @@ export function getDefaultContextMenuItems<TData extends RowData = RowData>(): C
       id: 'paste',
       name: 'Paste',
       shortcut: '⌘V',
-      disabled: true, // Will be enabled by clipboard plugin
       action: async (params) => {
-        // Clipboard plugin will handle this
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text && params.rowIndex !== null && params.colId) {
+            // Simple paste: apply to the clicked cell
+            const col = params.api.getColumn(params.colId);
+            if (col?.field) {
+              const state = params.api.getState();
+              const currentVal = state.data[params.rowIndex] 
+                ? (state.data[params.rowIndex] as Record<string, unknown>)[col.field as string]
+                : null;
+              params.api.applyEdit(params.rowIndex, params.colId, currentVal as import('../types').CellValue, text);
+            }
+          }
+        } catch (err) {
+          console.error('Paste failed:', err);
+        }
+        params.closeMenu();
       },
     },
     {
       id: 'separator2',
+      name: '',
+      separator: true,
+    },
+    {
+      id: 'pinColumn',
+      name: 'Pin Column',
+      hidden: (params) => !params.colId,
+      subMenu: [
+        {
+          id: 'pinLeft',
+          name: 'Pin Left',
+          action: (params) => {
+            if (params.colId) {
+              params.api.setColumnPinned(params.colId, 'left');
+            }
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'pinRight',
+          name: 'Pin Right',
+          action: (params) => {
+            if (params.colId) {
+              params.api.setColumnPinned(params.colId, 'right');
+            }
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'unpin',
+          name: 'No Pin',
+          action: (params) => {
+            if (params.colId) {
+              params.api.setColumnPinned(params.colId, false);
+            }
+            params.closeMenu();
+          },
+        },
+      ],
+    },
+    {
+      id: 'separator3',
       name: '',
       separator: true,
     },
@@ -138,6 +195,7 @@ export function getDefaultContextMenuItems<TData extends RowData = RowData>(): C
           name: 'CSV Export',
           action: (params) => {
             params.api.exportToCsv();
+            params.closeMenu();
           },
         },
         {
@@ -146,12 +204,79 @@ export function getDefaultContextMenuItems<TData extends RowData = RowData>(): C
           disabled: (params) => params.selectedRows.length === 0,
           action: (params) => {
             params.api.exportToCsv({ onlySelected: true });
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSeparator1',
+          name: '',
+          separator: true,
+        },
+        {
+          id: 'exportExcel',
+          name: 'Excel Export',
+          action: async (params) => {
+            await params.api.exportToExcel();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSelectedExcel',
+          name: 'Excel Export (Selected Only)',
+          disabled: (params) => params.selectedRows.length === 0,
+          action: async (params) => {
+            await params.api.exportToExcel({ onlySelected: true });
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSeparator2',
+          name: '',
+          separator: true,
+        },
+        {
+          id: 'exportJson',
+          name: 'JSON Export',
+          action: (params) => {
+            params.api.exportToJson();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSelectedJson',
+          name: 'JSON Export (Selected Only)',
+          disabled: (params) => params.selectedRows.length === 0,
+          action: (params) => {
+            params.api.exportToJson({ onlySelected: true });
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSeparator3',
+          name: '',
+          separator: true,
+        },
+        {
+          id: 'exportPdf',
+          name: 'PDF Export',
+          action: async (params) => {
+            await params.api.exportToPdf();
+            params.closeMenu();
+          },
+        },
+        {
+          id: 'exportSelectedPdf',
+          name: 'PDF Export (Selected Only)',
+          disabled: (params) => params.selectedRows.length === 0,
+          action: async (params) => {
+            await params.api.exportToPdf({ onlySelected: true });
+            params.closeMenu();
           },
         },
       ],
     },
     {
-      id: 'separator3',
+      id: 'separator4',
       name: '',
       separator: true,
     },

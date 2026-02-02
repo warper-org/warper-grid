@@ -153,7 +153,7 @@ export default function TermsPage() {
             <p className="text-zinc-400 leading-relaxed">
               For questions about these Terms of Service, please contact us at:
             </p>
-            <p className="text-emerald-400 mt-2">legal@warpergrid.com</p>
+            <p className="text-emerald-400 mt-2">e2vylu0d0@mozmail.com</p>
           </section>
         </div>
       </main>

@@ -6,6 +6,8 @@ import App from './App.tsx'
 import HomePage from './pages/HomePage.tsx'
 import TermsPage from './pages/TermsPage.tsx'
 import LicensePage from './pages/LicensePage.tsx'
+import PaymentSuccessPage from './pages/PaymentSuccessPage.tsx'
+import DocsPage from './pages/DocsPage.tsx'
 
 // Simple hash-based router
 function Router() {
@@ -27,6 +29,15 @@ function Router() {
   
   if (route === '#license') {
     return <LicensePage />;
+  }
+
+  if (route === '#payment-success') {
+    return <PaymentSuccessPage />;
+  }
+
+  // Docs routes
+  if (route.startsWith('#docs')) {
+    return <DocsPage />;
   }
   
   return <HomePage />;

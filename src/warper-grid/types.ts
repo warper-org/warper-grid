@@ -376,6 +376,9 @@ export interface GridApi<TData extends RowData = RowData> {
   
   // Export
   exportToCsv: (params?: ExportParams) => void;
+  exportToExcel: (params?: ExportParams) => Promise<void>;
+  exportToJson: (params?: ExportParams) => void;
+  exportToPdf: (params?: ExportParams) => Promise<void>;
   
   // State
   getState: () => GridState<TData>;

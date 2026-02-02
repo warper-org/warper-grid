@@ -137,9 +137,24 @@ export {
   // Export
   useExport,
   dataToCSV,
+  dataToJSON,
+  dataToExcel,
+  dataToPDF,
   downloadCSV,
+  downloadJSON,
   copyToClipboard,
   escapeCsvValue,
+  exportToCsv,
+  exportToExcel,
+  exportToJson,
+  exportToPdf,
+} from './plugins/export';
+
+export type {
+  ExportFormat,
+  ExcelExportOptions,
+  PdfExportOptions,
+  JsonExportOptions,
 } from './plugins/export';
 
 // Components

@@ -12,6 +12,11 @@ import {
   Columns,
   RotateCcw,
   Check,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  FileJson,
+  FileDown,
 } from 'lucide-react';
 import type {
   RowData,
@@ -103,6 +108,16 @@ function MenuItem<TData extends RowData = RowData>({
         return <Columns className="h-4 w-4" />;
       case 'resetColumns':
         return <RotateCcw className="h-4 w-4" />;
+      case 'export':
+        return <Download className="h-4 w-4" />;
+      case 'exportCsv':
+        return <FileText className="h-4 w-4" />;
+      case 'exportExcel':
+        return <FileSpreadsheet className="h-4 w-4" />;
+      case 'exportJson':
+        return <FileJson className="h-4 w-4" />;
+      case 'exportPdf':
+        return <FileDown className="h-4 w-4" />;
       default:
         return null;
     }

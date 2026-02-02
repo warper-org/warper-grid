@@ -546,6 +546,64 @@ export function createGridApi<TData extends RowData>(
       link.click();
       URL.revokeObjectURL(link.href);
     },
+
+    exportToExcel: async (params?: ExportParams) => {
+      const state = getState();
+      const columns = state.columns.filter(c => !c.hide);
+      const data = params?.onlySelected 
+        ? Array.from(state.selection.selectedRows).map(i => state.processedData[i])
+        : state.processedData;
+      
+      if (data.length === 0) return;
+
+      const { dataToExcel } = await import('./plugins/export');
+      const colMap = new Map(columns.map(c => [c.id, c]));
+      const getValue = (row: TData, colId: string): CellValue => {
+        const col = colMap.get(colId);
+        if (col?.field) return (row as Record<string, unknown>)[col.field as string] as CellValue;
+        return '';
+      };
+      await dataToExcel(data, columns, { fileName: params?.fileName || 'export.xlsx', getValue });
+    },
+
+    exportToJson: async (params?: ExportParams) => {
+      const state = getState();
+      const columns = state.columns.filter(c => !c.hide);
+      const data = params?.onlySelected 
+        ? Array.from(state.selection.selectedRows).map(i => state.processedData[i])
+        : state.processedData;
+      
+      if (data.length === 0) return;
+
+      const { dataToJSON, downloadJSON } = await import('./plugins/export');
+      const colMap = new Map(columns.map(c => [c.id, c]));
+      const getValue = (row: TData, colId: string): CellValue => {
+        const col = colMap.get(colId);
+        if (col?.field) return (row as Record<string, unknown>)[col.field as string] as CellValue;
+        return '';
+      };
+      const jsonContent = dataToJSON(data, columns, { getValue });
+      downloadJSON(jsonContent, params?.fileName || 'export.json');
+    },
+
+    exportToPdf: async (params?: ExportParams) => {
+      const state = getState();
+      const columns = state.columns.filter(c => !c.hide);
+      const data = params?.onlySelected 
+        ? Array.from(state.selection.selectedRows).map(i => state.processedData[i])
+        : state.processedData;
+      
+      if (data.length === 0) return;
+
+      const { dataToPDF } = await import('./plugins/export');
+      const colMap = new Map(columns.map(c => [c.id, c]));
+      const getValue = (row: TData, colId: string): CellValue => {
+        const col = colMap.get(colId);
+        if (col?.field) return (row as Record<string, unknown>)[col.field as string] as CellValue;
+        return '';
+      };
+      await dataToPDF(data, columns, { fileName: params?.fileName || 'export.pdf', getValue });
+    },
     
     // State
     getState: () => getState(),

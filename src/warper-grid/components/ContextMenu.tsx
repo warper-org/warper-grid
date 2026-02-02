@@ -10,6 +10,11 @@ import {
   Square,
   Scissors,
   FileSpreadsheet,
+  FileJson,
+  FileText,
+  FileDown,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import type {
   RowData,
@@ -99,10 +104,26 @@ function MenuItemComponent<TData extends RowData = RowData>({
       case 'cut':
         return <Scissors className="h-4 w-4" />;
       case 'export':
-      case 'exportCsv':
         return <Download className="h-4 w-4" />;
+      case 'exportCsv':
       case 'exportSelectedCsv':
+        return <FileText className="h-4 w-4" />;
+      case 'exportExcel':
+      case 'exportSelectedExcel':
         return <FileSpreadsheet className="h-4 w-4" />;
+      case 'exportJson':
+      case 'exportSelectedJson':
+        return <FileJson className="h-4 w-4" />;
+      case 'exportPdf':
+      case 'exportSelectedPdf':
+        return <FileDown className="h-4 w-4" />;
+      case 'pinColumn':
+        return <Pin className="h-4 w-4" />;
+      case 'pinLeft':
+      case 'pinRight':
+        return <Pin className="h-4 w-4" />;
+      case 'unpin':
+        return <PinOff className="h-4 w-4" />;
       case 'selectAll':
         return <CheckSquare className="h-4 w-4" />;
       case 'deselectAll':

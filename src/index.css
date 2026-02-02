@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Global Mobile Overflow Fix */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 .warper-grid-header-row.column-moving .warper-grid-header-cell {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
