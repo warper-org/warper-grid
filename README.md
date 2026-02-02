@@ -1,71 +1,43 @@
-<div align="center">
-
 # WarperGrid
 
-### The Professional React Data Grid
+A professional, feature-rich React data grid with TypeScript support, modular plugins, and beautiful UI.
 
-A powerful, feature-rich data grid for React applications with TypeScript support, modular plugins, and beautiful UI components.
+## Features
 
-[![npm version](https://img.shields.io/npm/v/@itsmeadarsh/warper-grid.svg?style=flat-square)](https://www.npmjs.com/package/@itsmeadarsh/warper-grid)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg?style=flat-square)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18%2B-61DAFB.svg?style=flat-square)](https://reactjs.org/)
-[![License](https://img.shields.io/badge/license-Commercial-orange.svg?style=flat-square)](https://warpergrid.com/license)
+**Core**
+- Sorting — Single and multi-column with custom comparators
+- Filtering — Text, number, date, and select filters
+- Pagination — Flexible page sizes with configurable options
+- Selection — Row and cell selection with keyboard support
+- Cell Editing — Inline editing with validation
+- Clipboard — Copy, cut, paste with Ctrl+C/X/V
 
-[Website](https://warpergrid.com) • [Documentation](#documentation) • [Discord](https://discord.gg/WC5npzPx3s) • [Get a License](https://warpergrid.com)
+**Columns**
+- Resizing — Drag to resize with min/max constraints
+- Dragging — Reorder columns via drag and drop
+- Pinning — Pin columns to left or right
+- Menu — Sorting, filtering, and visibility controls
 
-</div>
+**Advanced**
+- Export — CSV, Excel, JSON, and PDF
+- Master-Detail — Expandable rows with nested content
+- SQL Query — Query data with SQL syntax
+- Row Grouping — Group by columns with aggregation
+- Status Bar — Row count and selection info
+- Context Menu — Right-click actions
 
----
+## Installation
 
-## 📖 Table of Contents
+```bash
+bun add @itsmeadarsh/warper-grid
 
-- [Features](#-features)
-- [Quick Start](#-quick-start)
-- [Installation](#-installation)
-- [Basic Usage](#-basic-usage)
-- [Column Definitions](#-column-definitions)
-- [Plugin System](#-plugin-system)
-- [API Reference](#-api-reference)
-- [Events](#-events)
-- [Theming & Styling](#-theming--styling)
-- [Licensing](#-licensing)
-- [Support](#-support)
+# or npm
+npm install @itsmeadarsh/warper-grid
+```
 
----
+Requires React 18+.
 
-## ✨ Features
-
-### Core Features
-- **🔄 Sorting** — Single and multi-column sorting with custom comparators
-- **🔍 Filtering** — Text, number, date, boolean, and select filters with quick filter search
-- **📄 Pagination** — Flexible page sizes with "Show All" option
-- **☑️ Selection** — Row and cell selection with keyboard support
-- **✏️ Cell Editing** — Inline editing with undo/redo support
-- **📋 Clipboard** — Copy, cut, and paste with Ctrl+C/X/V
-
-### Column Features
-- **↔️ Column Resizing** — Drag to resize with min/max constraints
-- **🔀 Column Dragging** — Reorder columns via drag and drop
-- **📌 Column Pinning** — Pin columns to left or right
-- **📊 Column Menu** — Built-in column menu with sorting, filtering, visibility controls
-
-### Advanced Features
-- **📤 Export** — Export to CSV, Excel, JSON, and PDF
-- **🗃️ Master-Detail** — Expandable rows with nested grids
-- **🔍 SQL Query Panel** — Query your data with SQL syntax
-- **📊 Row Grouping** — Group data by columns (via SQL GROUP BY)
-- **📈 Status Bar** — Row count, selection info, and grid statistics
-- **🎯 Context Menu** — Right-click actions on cells and rows
-
-### Developer Experience
-- **📦 TypeScript First** — Full type safety with comprehensive type definitions
-- **🔌 Plugin Architecture** — Enable only the features you need
-- **🎨 Tailwind CSS** — Beautiful, customizable styling
-- **⚛️ React 18+** — Modern React with hooks and concurrent features
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ```tsx
 import { WarperGrid } from '@itsmeadarsh/warper-grid';
@@ -74,7 +46,6 @@ import '@itsmeadarsh/warper-grid/styles';
 const data = [
   { id: 1, name: 'John Doe', email: 'john@example.com', age: 28 },
   { id: 2, name: 'Jane Smith', email: 'jane@example.com', age: 34 },
-  { id: 3, name: 'Bob Johnson', email: 'bob@example.com', age: 45 },
 ];
 
 const columns = [
@@ -85,524 +56,158 @@ const columns = [
 ];
 
 function App() {
-  return (
-    <WarperGrid
-      data={data}
-      columns={columns}
-      height={400}
-    />
-  );
-}
-```
-
----
-
-## 📦 Installation
-
-```bash
-# Using npm
-npm install @itsmeadarsh/warper-grid
-
-# Using yarn
-yarn add @itsmeadarsh/warper-grid
-
-# Using pnpm
-pnpm add @itsmeadarsh/warper-grid
-
-# Using bun
-bun add @itsmeadarsh/warper-grid
-```
-
-### Peer Dependencies
-
-WarperGrid requires React 18 or later:
-
-```bash
-npm install react react-dom
-```
-
----
-
-## 📖 Basic Usage
-
-### Import Styles
-
-Always import the styles at the top of your app:
-
-```tsx
-import '@itsmeadarsh/warper-grid/styles';
-```
-
-### Simple Grid
-
-```tsx
-import { WarperGrid } from '@itsmeadarsh/warper-grid';
-
-function MyGrid() {
-  const data = [
-    { id: 1, name: 'Product A', price: 99.99, stock: 150 },
-    { id: 2, name: 'Product B', price: 149.99, stock: 75 },
-  ];
-
-  const columns = [
-    { id: 'id', field: 'id', headerName: 'ID' },
-    { id: 'name', field: 'name', headerName: 'Product Name' },
-    { id: 'price', field: 'price', headerName: 'Price' },
-    { id: 'stock', field: 'stock', headerName: 'In Stock' },
-  ];
-
   return <WarperGrid data={data} columns={columns} height={400} />;
 }
 ```
 
-### With Sorting and Filtering
+## Column Definitions
 
 ```tsx
-<WarperGrid
-  data={data}
-  columns={columns.map(col => ({
-    ...col,
+const columns = [
+  {
+    id: 'name',
+    field: 'name',
+    headerName: 'Name',
+    width: 200,
     sortable: true,
     filterable: true,
-  }))}
-  height={400}
-/>
+  },
+  {
+    id: 'price',
+    field: 'price',
+    headerName: 'Price',
+    valueFormatter: ({ value }) => `$${value.toFixed(2)}`,
+  },
+  {
+    id: 'status',
+    field: 'status',
+    headerName: 'Status',
+    cellRenderer: ({ value }) => (
+      <span className={`badge badge-${value}`}>{value}</span>
+    ),
+  },
+  {
+    id: 'total',
+    headerName: 'Total',
+    valueGetter: ({ data }) => data.price * data.quantity,
+  },
+];
 ```
 
-### With Pagination
+### Column Options
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique column identifier (required) |
+| `field` | `string` | Data field key |
+| `headerName` | `string` | Display name |
+| `width` | `number` | Fixed width in pixels |
+| `flex` | `number` | Flex grow factor |
+| `sortable` | `boolean` | Enable sorting |
+| `filterable` | `boolean` | Enable filtering |
+| `editable` | `boolean` | Enable editing |
+| `pinned` | `'left' \| 'right'` | Pin column |
+| `hide` | `boolean` | Hide column |
+| `valueGetter` | `function` | Compute cell value |
+| `valueFormatter` | `function` | Format display value |
+| `cellRenderer` | `function` | Custom cell component |
+
+## Plugins
+
+Enable features via the plugin system:
 
 ```tsx
 <WarperGrid
   data={data}
   columns={columns}
-  height={400}
   pluginConfig={{
-    pagination: {
-      pageSize: 25,
-      pageSizes: [10, 25, 50, 100],
-    },
+    sorting: { multiSort: true },
+    filtering: { quickFilter: true },
+    pagination: { pageSize: 50 },
+    selection: { mode: 'multiple' },
+    export: { fileName: 'my-data' },
   }}
 />
 ```
-
----
-
-## 📋 Column Definitions
-
-Columns are defined using the `ColumnDef` interface:
-
-```tsx
-interface ColumnDef<TData> {
-  // Required
-  id: string;                    // Unique column identifier
-  
-  // Basic
-  field?: string;                // Field key in row data
-  headerName?: string;           // Display name in header
-  
-  // Sizing
-  width?: number;                // Fixed width in pixels
-  minWidth?: number;             // Minimum width
-  maxWidth?: number;             // Maximum width
-  flex?: number;                 // Flex grow factor
-  
-  // Alignment
-  align?: 'left' | 'center' | 'right';
-  headerAlign?: 'left' | 'center' | 'right';
-  
-  // Features
-  sortable?: boolean;            // Enable sorting
-  filterable?: boolean;          // Enable filtering
-  filterType?: 'text' | 'number' | 'date' | 'boolean' | 'select';
-  resizable?: boolean;           // Enable resizing
-  editable?: boolean;            // Enable editing
-  pinned?: 'left' | 'right' | false;
-  hide?: boolean;                // Hide column
-  
-  // Custom Rendering
-  valueGetter?: (params) => CellValue;
-  valueFormatter?: (params) => string;
-  cellRenderer?: (params) => ReactNode;
-  headerRenderer?: (params) => ReactNode;
-  cellEditor?: (params) => ReactNode;
-  
-  // Styling
-  cellClass?: string | ((params) => string);
-  headerClass?: string | ((params) => string);
-  cellStyle?: CSSProperties | ((params) => CSSProperties);
-  
-  // Sorting
-  comparator?: (a, b, rowA, rowB) => number;
-  
-  // Filtering
-  filterFn?: (value, filterValue, row) => boolean;
-}
-```
-
-### Column Examples
-
-#### Value Formatter
-
-```tsx
-{
-  id: 'price',
-  field: 'price',
-  headerName: 'Price',
-  valueFormatter: ({ value }) => `$${value.toFixed(2)}`,
-}
-```
-
-#### Custom Cell Renderer
-
-```tsx
-{
-  id: 'status',
-  field: 'status',
-  headerName: 'Status',
-  cellRenderer: ({ value }) => (
-    <span className={`badge badge-${value}`}>
-      {value}
-    </span>
-  ),
-}
-```
-
-#### Editable Column
-
-```tsx
-{
-  id: 'quantity',
-  field: 'quantity',
-  headerName: 'Qty',
-  editable: true,
-  filterType: 'number',
-}
-```
-
-#### Computed Column
-
-```tsx
-{
-  id: 'total',
-  headerName: 'Total',
-  valueGetter: ({ data }) => data.price * data.quantity,
-  valueFormatter: ({ value }) => `$${value.toFixed(2)}`,
-}
-```
-
----
-
-## 🔌 Plugin System
-
-WarperGrid uses a modular plugin system. Enable only the features you need:
 
 ### Available Plugins
 
 | Plugin | Description |
 |--------|-------------|
-| `sorting` | Column sorting with multi-sort support |
-| `filtering` | Column filters and quick search |
-| `pagination` | Page navigation and page size selection |
-| `selection` | Row and cell selection |
-| `columnResizing` | Drag to resize columns |
-| `columnDragging` | Drag to reorder columns |
-| `columnMenu` | Column header menu |
-| `cellEditing` | Inline cell editing with undo/redo |
-| `cellSelection` | Range selection for cells |
-| `clipboard` | Copy, cut, paste operations |
-| `contextMenu` | Right-click context menu |
-| `export` | Export to CSV, Excel, JSON, PDF |
-| `masterDetail` | Expandable detail rows |
-| `statusBar` | Grid statistics bar |
+| `sorting` | Column sorting |
+| `filtering` | Column filters |
+| `pagination` | Page navigation |
+| `selection` | Row/cell selection |
+| `columnResizing` | Drag to resize |
+| `columnDragging` | Drag to reorder |
+| `columnMenu` | Header menu |
+| `cellEditing` | Inline editing |
+| `clipboard` | Copy/paste |
+| `contextMenu` | Right-click menu |
+| `export` | CSV/Excel/JSON/PDF |
+| `masterDetail` | Expandable rows |
+| `statusBar` | Grid statistics |
 | `sqlQuery` | SQL query panel |
-| `rowGrouping` | Group rows by columns |
 
-### Plugin Configuration
+## Grid API
+
+Access the API via ref:
+
+```tsx
+const gridRef = useRef<WarperGridRef>(null);
+
+// Get data
+gridRef.current?.api.getData();
+gridRef.current?.api.getDisplayedData();
+
+// Selection
+gridRef.current?.api.getSelectedRows();
+gridRef.current?.api.selectAll();
+gridRef.current?.api.deselectAll();
+
+// Sorting & Filtering
+gridRef.current?.api.setSortModel([{ colId: 'name', sort: 'asc' }]);
+gridRef.current?.api.setQuickFilter('search term');
+
+// Pagination
+gridRef.current?.api.setPage(2);
+gridRef.current?.api.setPageSize(50);
+
+// Export
+gridRef.current?.api.exportToCsv({ fileName: 'export' });
+gridRef.current?.api.exportToExcel({ fileName: 'export' });
+```
+
+## Events
 
 ```tsx
 <WarperGrid
   data={data}
   columns={columns}
-  pluginConfig={{
-    sorting: {
-      multiSort: true,
-    },
-    filtering: {
-      debounce: 300,
-      quickFilter: true,
-    },
-    pagination: {
-      pageSize: 50,
-      pageSizes: [25, 50, 100, 250],
-    },
-    selection: {
-      mode: 'multiple',
-      checkboxSelection: true,
-    },
-    cellEditing: {
-      editTrigger: 'doubleClick',
-      undoRedo: true,
-    },
-    export: {
-      fileName: 'my-data',
-    },
+  onCellClick={({ rowIndex, colId, value }) => {
+    console.log('Clicked:', rowIndex, colId, value);
   }}
-/>
-```
-
----
-
-## 📚 API Reference
-
-### Grid Props
-
-```tsx
-interface WarperGridProps<TData> {
-  // Required
-  data: TData[];                 // Row data
-  columns: ColumnDef<TData>[];   // Column definitions
-  
-  // Sizing
-  height?: number | string;      // Grid height
-  width?: number | string;       // Grid width
-  rowHeight?: number;            // Row height (default: 40)
-  headerHeight?: number;         // Header height (default: 44)
-  
-  // Virtualization
-  overscan?: number;             // Extra rows to render
-  
-  // Appearance
-  striped?: boolean;             // Alternating row colors
-  bordered?: boolean;            // Show cell borders
-  compact?: boolean;             // Compact row height
-  className?: string;            // Custom CSS class
-  style?: CSSProperties;         // Inline styles
-  
-  // State
-  loading?: boolean;             // Show loading state
-  emptyMessage?: string;         // Empty state text
-  loadingComponent?: ReactNode;  // Custom loading UI
-  emptyComponent?: ReactNode;    // Custom empty UI
-  
-  // Row identification
-  getRowId?: (data, index) => string | number;
-  
-  // Plugin configuration
-  pluginConfig?: PluginConfig;
-  
-  // Event handlers (see Events section)
-  onCellClick?: (event) => void;
-  onCellDoubleClick?: (event) => void;
-  onCellValueChanged?: (event) => void;
-  onRowClick?: (event) => void;
-  onSelectionChanged?: (event) => void;
-  onSortChanged?: (event) => void;
-  onFilterChanged?: (event) => void;
-  onColumnResized?: (event) => void;
-  onPageChanged?: (event) => void;
-  onGridReady?: (api) => void;
-}
-```
-
-### Grid API
-
-Access the Grid API via `onGridReady` or a ref:
-
-```tsx
-function MyGrid() {
-  const gridRef = useRef<WarperGridRef>(null);
-
-  const handleExport = () => {
-    gridRef.current?.api.exportToCsv({ fileName: 'export' });
-  };
-
-  return (
-    <>
-      <button onClick={handleExport}>Export CSV</button>
-      <WarperGrid ref={gridRef} data={data} columns={columns} />
-    </>
-  );
-}
-```
-
-#### API Methods
-
-```tsx
-interface GridApi<TData> {
-  // Data
-  getData(): TData[];
-  setData(data: TData[]): void;
-  getDisplayedData(): TData[];
-  getRowCount(): number;
-  refreshCells(params?): void;
-  
-  // Columns
-  getColumns(): ColumnDef<TData>[];
-  getColumn(colId: string): ColumnDef<TData> | undefined;
-  setColumnDefs(columns: ColumnDef<TData>[]): void;
-  setColumnWidth(colId: string, width: number): void;
-  setColumnVisible(colId: string, visible: boolean): void;
-  setColumnPinned(colId: string, pinned: 'left' | 'right' | false): void;
-  autoSizeColumn(colId: string): void;
-  autoSizeAllColumns(): void;
-  moveColumn(fromIdx: number, toIdx: number): void;
-  
-  // Sorting
-  getSortModel(): SortModel[];
-  setSortModel(model: SortModel[]): void;
-  
-  // Filtering
-  getFilterModel(): FilterModel[];
-  setFilterModel(model: FilterModel[]): void;
-  setQuickFilter(text: string): void;
-  
-  // Selection
-  getSelectedRows(): TData[];
-  getSelectedRowIndices(): number[];
-  selectRow(index: number, clearOthers?: boolean): void;
-  deselectRow(index: number): void;
-  selectAll(): void;
-  deselectAll(): void;
-  
-  // Pagination
-  getPage(): number;
-  setPage(page: number): void;
-  getPageSize(): number;
-  setPageSize(size: number): void;
-  getTotalPages(): number;
-  nextPage(): void;
-  previousPage(): void;
-  firstPage(): void;
-  lastPage(): void;
-  
-  // Scrolling
-  scrollToRow(index: number): void;
-  scrollToColumn(colId: string): void;
-  scrollToCell(rowIndex: number, colId: string): void;
-  
-  // Editing
-  startEditing(rowIndex: number, colId: string): void;
-  stopEditing(cancel?: boolean): void;
-  undo(): void;
-  redo(): void;
-  canUndo(): boolean;
-  canRedo(): boolean;
-  
-  // Export
-  exportToCsv(params?: ExportParams): void;
-  exportToExcel(params?: ExportParams): Promise<void>;
-  exportToJson(params?: ExportParams): void;
-  exportToPdf(params?: ExportParams): Promise<void>;
-  
-  // State
-  getState(): GridState<TData>;
-  subscribe(listener: (state) => void): () => void;
-}
-```
-
----
-
-## 📡 Events
-
-### Event Handlers
-
-```tsx
-<WarperGrid
-  data={data}
-  columns={columns}
-  
-  onCellClick={(event) => {
-    console.log('Cell clicked:', event.rowIndex, event.colId, event.value);
+  onCellValueChanged={({ oldValue, newValue }) => {
+    console.log('Changed:', oldValue, '->', newValue);
   }}
-  
-  onCellDoubleClick={(event) => {
-    console.log('Cell double-clicked:', event.colId);
+  onSelectionChanged={({ selectedRows }) => {
+    console.log('Selected:', selectedRows.length);
   }}
-  
-  onCellValueChanged={(event) => {
-    console.log('Value changed:', event.oldValue, '->', event.newValue);
+  onSortChanged={({ sortModel }) => {
+    console.log('Sort:', sortModel);
   }}
-  
-  onRowClick={(event) => {
-    console.log('Row clicked:', event.data);
+  onFilterChanged={({ filterModel }) => {
+    console.log('Filter:', filterModel);
   }}
-  
-  onSelectionChanged={(event) => {
-    console.log('Selected rows:', event.selectedRows.length);
-  }}
-  
-  onSortChanged={(event) => {
-    console.log('Sort changed:', event.sortModel);
-  }}
-  
-  onFilterChanged={(event) => {
-    console.log('Filter changed:', event.filterModel);
-  }}
-  
-  onColumnResized={(event) => {
-    console.log('Column resized:', event.colId, event.width);
-  }}
-  
-  onPageChanged={(event) => {
-    console.log('Page changed:', event.page, event.pageSize);
-  }}
-  
   onGridReady={(api) => {
-    console.log('Grid ready, row count:', api.getRowCount());
+    console.log('Ready, rows:', api.getRowCount());
   }}
 />
 ```
 
-### Event Types
+## Theming
 
-```tsx
-interface CellClickEvent<TData> {
-  type: 'cellClick';
-  rowIndex: number;
-  colId: string;
-  value: CellValue;
-  data: TData;
-  event: React.MouseEvent;
-  api: GridApi<TData>;
-}
-
-interface CellValueChangedEvent<TData> {
-  type: 'cellValueChanged';
-  rowIndex: number;
-  colId: string;
-  oldValue: CellValue;
-  newValue: CellValue;
-  data: TData;
-  api: GridApi<TData>;
-}
-
-interface SelectionChangedEvent<TData> {
-  type: 'selectionChanged';
-  selectedRows: TData[];
-  selectedIndices: number[];
-  api: GridApi<TData>;
-}
-
-interface SortChangedEvent<TData> {
-  type: 'sortChanged';
-  sortModel: SortModel[];
-  api: GridApi<TData>;
-}
-
-interface FilterChangedEvent<TData> {
-  type: 'filterChanged';
-  filterModel: FilterModel[];
-  api: GridApi<TData>;
-}
-```
-
----
-
-## 🎨 Theming & Styling
-
-### CSS Variables
-
-Customize the grid appearance with CSS variables:
+Customize with CSS variables:
 
 ```css
 .warper-grid {
@@ -613,7 +218,6 @@ Customize the grid appearance with CSS variables:
   --wg-cell-text: #374151;
   --wg-row-hover: #f3f4f6;
   --wg-row-selected: #dbeafe;
-  --wg-cell-selected: #bfdbfe;
   --wg-primary: #3b82f6;
 }
 
@@ -626,37 +230,26 @@ Customize the grid appearance with CSS variables:
   --wg-cell-text: #d1d5db;
   --wg-row-hover: #374151;
   --wg-row-selected: #1e3a5f;
-  --wg-cell-selected: #1e40af;
 }
 ```
 
-### Custom Cell Styles
+## Grid Props
 
-```tsx
-{
-  id: 'price',
-  field: 'price',
-  headerName: 'Price',
-  cellStyle: ({ value }) => ({
-    color: value > 100 ? 'green' : 'red',
-    fontWeight: 'bold',
-  }),
-}
-```
+| Prop | Type | Description |
+|------|------|-------------|
+| `data` | `T[]` | Row data (required) |
+| `columns` | `ColumnDef[]` | Column definitions (required) |
+| `height` | `number \| string` | Grid height |
+| `rowHeight` | `number` | Row height (default: 40) |
+| `headerHeight` | `number` | Header height (default: 44) |
+| `striped` | `boolean` | Alternating row colors |
+| `bordered` | `boolean` | Show cell borders |
+| `loading` | `boolean` | Loading state |
+| `emptyMessage` | `string` | Empty state text |
+| `pluginConfig` | `object` | Plugin configuration |
 
-### Row Striping
+## License
 
-```tsx
-<WarperGrid
-  data={data}
-  columns={columns}
-  striped
-/>
-```
-
-
-## 📄 License
-
-WarperGrid is proprietary software. See [LICENSE](https://warpergrid.com/license) for terms.
+WarperGrid is proprietary software.
 
 Copyright © 2024-2026 WarperGrid. All rights reserved.

@@ -36,9 +36,12 @@ import { CodeBlock } from '../components/CodeBlock';
 import { getAppUrl } from '../lib/url';
 
 // Dodo Payments Configuration
-const DODO_PRODUCT_ID = import.meta.env.VITE_DODO_PRODUCT_ID || 'your_product_id';
 const DODO_ENVIRONMENT = import.meta.env.VITE_DODO_ENVIRONMENT || 'test_mode';
-const DODO_CHECKOUT_BASE = DODO_ENVIRONMENT === 'live_mode' 
+const IS_LIVE_MODE = DODO_ENVIRONMENT === 'live_mode';
+const DODO_PRODUCT_ID = IS_LIVE_MODE
+  ? import.meta.env.VITE_DODO_PRODUCT_ID_LIVE
+  : import.meta.env.VITE_DODO_PRODUCT_ID_TEST;
+const DODO_CHECKOUT_BASE = IS_LIVE_MODE 
   ? 'https://checkout.dodopayments.com' 
   : 'https://test.checkout.dodopayments.com';
 const DODO_CHECKOUT_URL = `${DODO_CHECKOUT_BASE}/buy/${DODO_PRODUCT_ID}`;
