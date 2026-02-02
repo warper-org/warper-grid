@@ -1,7 +1,33 @@
 {
   "name": "@itsmeadarsh/warper-grid",
-  "private": true,
   "version": "1.0.0",
+  "description": "A professional, feature-rich React data grid with TypeScript support, modular plugins, and beautiful UI",
+  "author": "Adarsh <adarsh@warper.tech>",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://grid.warper.tech",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warper-org/warper-grid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/warper-org/warper-grid/issues"
+  },
+  "keywords": [
+    "react",
+    "data-grid",
+    "datagrid",
+    "table",
+    "grid",
+    "typescript",
+    "react-table",
+    "excel",
+    "spreadsheet",
+    "virtualized",
+    "sorting",
+    "filtering",
+    "pagination",
+    "editing"
+  ],
   "type": "module",
   "main": "./dist/warper-grid.cjs",
   "module": "./dist/warper-grid.js",

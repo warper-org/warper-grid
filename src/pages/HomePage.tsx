@@ -44,7 +44,17 @@ const DODO_PRODUCT_ID = IS_LIVE_MODE
 const DODO_CHECKOUT_BASE = IS_LIVE_MODE 
   ? 'https://checkout.dodopayments.com' 
   : 'https://test.checkout.dodopayments.com';
-const DODO_CHECKOUT_URL = `${DODO_CHECKOUT_BASE}/buy/${DODO_PRODUCT_ID}`;
+
+// Build checkout URL with redirect
+function getCheckoutUrl() {
+  const baseUrl = `${DODO_CHECKOUT_BASE}/buy/${DODO_PRODUCT_ID}`;
+  const successUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/#payment-success`
+    : '';
+  return successUrl ? `${baseUrl}?redirect_url=${encodeURIComponent(successUrl)}` : baseUrl;
+}
+
+const DODO_CHECKOUT_URL = getCheckoutUrl();
 
 // ============================================================================
 // Animated Components
@@ -465,7 +475,7 @@ function Hero() {
               style={{ animationDelay: '0.3s' }}
             >
               <a 
-                href={`${DODO_CHECKOUT_URL}?return_url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/#payment-success' : '#payment-success')}`}
+                href={DODO_CHECKOUT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-900 font-semibold rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 text-xs sm:text-base"
@@ -1038,7 +1048,7 @@ function Pricing() {
                 </div>
               ) : tier.isDodo ? (
                 <a 
-                  href={`${tier.ctaLink}?return_url=${encodeURIComponent(getAppUrl() + '#payment-success')}`}
+                  href={tier.ctaLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-2.5 sm:py-3 text-center font-semibold rounded-lg sm:rounded-xl transition-all duration-300 text-sm sm:text-base bg-emerald-500 hover:bg-emerald-400 text-zinc-900"
@@ -1090,7 +1100,7 @@ function CTA() {
           
           <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 sm:gap-4">
             <a 
-              href={`${DODO_CHECKOUT_URL}?return_url=${encodeURIComponent(getAppUrl() + '#payment-success')}`}
+              href={DODO_CHECKOUT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center justify-center gap-1.5 sm:gap-2 px-5 sm:px-8 py-2.5 sm:py-4 bg-emerald-500 hover:bg-emerald-400 text-zinc-900 font-semibold rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/25 text-xs sm:text-base"
