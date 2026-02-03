@@ -243,30 +243,26 @@ const HelpModal = memo(function HelpModal({ isOpen, onClose }: HelpModalProps) {
   if (!isOpen) return null;
 
   const shortcuts = [
-    { keys: 'Click + Drag', action: 'Select range of cells' },
+    { keys: 'Arrow Keys', action: 'Move active cell' },
+    { keys: 'Shift + Arrows', action: 'Extend selection range' },
+    { keys: 'Ctrl + Arrows', action: 'Jump to edge of grid' },
+    { keys: 'Tab', action: 'Move right (wraps to next row)' },
+    { keys: 'Shift + Tab', action: 'Move left (wraps to prev row)' },
+    { keys: 'Enter', action: 'Move down' },
+    { keys: 'Shift + Enter', action: 'Move up' },
+    { keys: 'Ctrl + A', action: 'Select all cells / rows' },
+    { keys: 'Home / End', action: 'Go to start / end of row' },
+    { keys: 'Ctrl + Home / End', action: 'Go to start / end of grid' },
+    { keys: 'PageUp / Down', action: 'Scroll up / down one page' },
+    { keys: 'F2 / Double Click', action: 'Edit cell' },
+    { keys: 'Ctrl + C / V / X', action: 'Copy / Paste / Cut' },
+    { keys: 'Ctrl + Z / Y', action: 'Undo / Redo' },
+    { keys: 'Click + Drag', action: 'Select range' },
+    { keys: 'Ctrl + Click', action: 'Select multiple cells' },
     { keys: 'Shift + Click', action: 'Extend selection' },
-    { keys: 'Ctrl + Click', action: 'Add to selection' },
-    { keys: 'Ctrl + C', action: 'Copy selected cells' },
-    { keys: 'Ctrl + V', action: 'Paste from clipboard' },
-    { keys: 'Ctrl + X', action: 'Cut selected cells' },
-    { keys: 'Ctrl + Z', action: 'Undo last edit' },
-    { keys: 'Ctrl + Y', action: 'Redo last edit' },
-    { keys: 'Ctrl + A', action: 'Select all cells' },
-    { keys: 'Enter', action: 'Start editing / Confirm edit' },
-    { keys: 'Escape', action: 'Cancel editing' },
-    { keys: 'Tab', action: 'Move to next cell' },
-    { keys: 'Shift + Tab', action: 'Move to previous cell' },
-    { keys: 'Arrow Keys', action: 'Navigate cells' },
-    { keys: 'Double Click', action: 'Edit cell' },
-    { keys: 'Right Click', action: 'Open context menu' },
-    { keys: 'Delete', action: 'Clear cell content' },
-    { keys: 'F2', action: 'Edit current cell' },
-    { keys: 'Home', action: 'Go to first cell in row' },
-    { keys: 'End', action: 'Go to last cell in row' },
-    { keys: 'Ctrl + Home', action: 'Go to first cell' },
-    { keys: 'Ctrl + End', action: 'Go to last cell' },
-    { keys: 'Page Up', action: 'Scroll up one page' },
-    { keys: 'Page Down', action: 'Scroll down one page' },
+    { keys: 'Delete', action: 'Clear content (if supported)' },
+    { keys: 'Right Click', action: 'Context menu' },
+    { keys: 'Escape', action: 'Cancel selection / editing' },
   ];
 
   const tips = [
@@ -504,17 +500,17 @@ function App() {
 
   // SQL Database Manager
   const sqlManager = useMemo<SqlDatabaseManager<Person>>(() => {
-    return createSqlDatabaseManager<Person>({ tableName: 'employees', maxRows: 50000 });
+    return createSqlDatabaseManager<Person>({ tableName: 'employees', maxRows: 10000000 });
   }, []);
 
   // Sync rawData to SQL and execute query
   const executeQuery = useCallback(async () => {
     let result;
     if (!groupBy.length) {
-      result = await sqlManager.executeQuery(`SELECT * FROM employees LIMIT 1000`);
+      result = await sqlManager.executeQuery(`SELECT * FROM employees`);
     } else {
       const groupCols = groupBy.map(col => `"${col}"`).join(', ');
-      result = await sqlManager.executeQuery(`SELECT ${groupCols}, COUNT(*) as count, AVG(salary) as avg_salary FROM employees GROUP BY ${groupCols} LIMIT 1000`);
+      result = await sqlManager.executeQuery(`SELECT ${groupCols}, COUNT(*) as count, AVG(salary) as avg_salary FROM employees GROUP BY ${groupCols}`);
     }
     if (result) {
       setSqlColumns(result.columns);
@@ -897,8 +893,8 @@ function App() {
                     </button>
                   </Tooltip>
 
-                  {/* Plugin Toggles - Hidden on mobile */}
-                  <div className="hidden md:flex items-center gap-1 ml-1">
+                  {/* Plugin Toggles - Hidden as per user request */}
+                  <div className="hidden">
                     <Tooltip content="Toggle Filtering">
                       <button
                         onClick={() => togglePlugin('filtering')}

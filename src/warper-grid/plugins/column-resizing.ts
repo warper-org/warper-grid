@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { 
-  RowData, 
-  GridPlugin, 
-  GridApi, 
-  ColumnResizingPluginConfig 
+import type {
+  RowData,
+  GridPlugin,
+  GridApi,
+  ColumnResizingPluginConfig
 } from '../types';
 
 // ============================================================================
@@ -64,11 +64,11 @@ export function useColumnResizing<TData extends RowData>(
   const [isResizing, setIsResizing] = useState(false);
   const resizeStateRef = useRef<ResizeState | null>(null);
   const resizingColIdRef = useRef<string | null>(null);
-  
+
   // Use RAF for smooth updates
   const rafIdRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(0);
-  
+
   const startResize = useCallback((colId: string, startX: number, startWidth: number) => {
     resizeStateRef.current = { colId, startX, startWidth };
     resizingColIdRef.current = colId;
@@ -78,12 +78,12 @@ export function useColumnResizing<TData extends RowData>(
   const updateResize = useCallback((currentX: number) => {
     const resizeState = resizeStateRef.current;
     if (!resizeState) return;
-    
+
     // Throttle updates to 60fps using RAF
     const now = performance.now();
     if (now - lastUpdateRef.current < 16) return; // ~60fps
     lastUpdateRef.current = now;
-    
+
     const newWidth = calculateNewWidth(
       resizeState.startWidth,
       resizeState.startX,
@@ -91,7 +91,7 @@ export function useColumnResizing<TData extends RowData>(
       minWidth,
       maxWidth
     );
-    
+
     // Only update if width actually changed
     api.setColumnWidth(resizeState.colId, newWidth);
   }, [api, minWidth, maxWidth]);
@@ -124,13 +124,28 @@ export function useColumnResizing<TData extends RowData>(
       endResize();
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = requestAnimationFrame(() => {
+        updateResize(e.touches[0].clientX);
+      });
+    };
+
+    const handleTouchEnd = () => {
+      endResize();
+    };
+
     // Use passive listeners for better scroll performance
     document.addEventListener('mousemove', handleMouseMove, { passive: true });
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
@@ -171,6 +186,12 @@ export function getResizerProps(
       e.preventDefault();
       e.stopPropagation();
       onResizeStart(colId, e.clientX, currentWidth);
+    },
+    onTouchStart: (e: React.TouchEvent) => {
+      e.stopPropagation(); // Don't prevent default to allow scrolling if needed, but here we are resizing
+      // For resizing, we probably DO want to prevent default scroll
+      // e.preventDefault(); // React synthetic event might not support this fully for passive, but let's try
+      onResizeStart(colId, e.touches[0].clientX, currentWidth);
     },
     className: `warper-grid-resizer ${isResizing ? 'warper-grid-resizer--resizing' : ''}`,
     style: { cursor: 'col-resize' },

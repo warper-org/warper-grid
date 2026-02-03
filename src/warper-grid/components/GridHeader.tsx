@@ -52,7 +52,7 @@ export function GridHeader<TData extends RowData>({
   const handleSort = useCallback((colId: string) => {
     const currentModel = api.getSortModel();
     const existing = currentModel.find(s => s.colId === colId);
-    
+
     let newDirection: SortDirection;
     if (!existing?.sort) {
       newDirection = 'asc';
@@ -79,141 +79,141 @@ export function GridHeader<TData extends RowData>({
   return (
     <div
       className="warper-grid-header"
-      style={{ height: headerHeight }}
+      style={{ height: headerHeight, width: '100%' }}
     >
       <div
-        ref={headerScrollRef}
-        className="warper-grid-header-scroll"
-        style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%' }}
+        className="warper-grid-header-row"
+        style={{ width: totalWidth, height: '100%' }}
       >
-        <div
-          className="warper-grid-header-row"
-          style={{ width: totalWidth, height: '100%' }}
-        >
-          {columns.map((col, index) => {
-            const sortDirection = getSortDirection(col.id);
-            const isSortable = col.sortable !== false;
-            const isColumnResizing = resizingColId === col.id;
+        {columns.map((col, index) => {
+          const sortDirection = getSortDirection(col.id);
+          const isSortable = col.sortable !== false;
+          const isColumnResizing = resizingColId === col.id;
 
-            return (
-              <div
-                key={col.id}
-                data-col-id={col.id}
-                className={cn(
-                  'warper-grid-header-cell group',
-                  isSortable && 'warper-grid-header-cell--sortable',
-                  sortDirection && 'warper-grid-header-cell--sorted',
-                  col.pinned === 'left' && 'warper-grid-pinned-left',
-                  col.pinned === 'right' && 'warper-grid-pinned-right'
-                )}
-                draggable={false}
-                style={{
-                  width: col.computedWidth,
-                  minWidth: col.minWidth,
-                  maxWidth: col.maxWidth,
-                  position: 'relative',
-                  textAlign: col.headerAlign || col.align || 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  /* Pinned columns are now normal columns (no sticky positioning) */
-                  /* Keep visual treatment via classes only */
-                  /* offsets are preserved in order but not overlaid */
-                  ...(typeof col.headerStyle === 'function'
-                    ? col.headerStyle({ column: col, columnIndex: index, api })
-                    : col.headerStyle),
-                  ...(typeof col.headerStyle === 'function'
-                    ? col.headerStyle({ column: col, columnIndex: index, api })
-                    : col.headerStyle),
-                }}
-                onClick={() => isSortable && handleSort(col.id)}
+          return (
+            <div
+              key={col.id}
+              data-col-id={col.id}
+              className={cn(
+                'warper-grid-header-cell group',
+                isSortable && 'warper-grid-header-cell--sortable',
+                sortDirection && 'warper-grid-header-cell--sorted',
+                col.pinned === 'left' && 'warper-grid-pinned-left',
+                col.pinned === 'right' && 'warper-grid-pinned-right'
+              )}
+              draggable={false}
+              style={{
+                width: col.computedWidth,
+                minWidth: col.minWidth,
+                maxWidth: col.maxWidth,
+                position: 'relative',
+                textAlign: col.headerAlign || col.align || 'left',
+                display: 'flex',
+                alignItems: 'center',
+                /* Pinned columns are now normal columns (no sticky positioning) */
+                /* Keep visual treatment via classes only */
+                /* offsets are preserved in order but not overlaid */
+                ...(typeof col.headerStyle === 'function'
+                  ? col.headerStyle({ column: col, columnIndex: index, api })
+                  : col.headerStyle),
+                ...(typeof col.headerStyle === 'function'
+                  ? col.headerStyle({ column: col, columnIndex: index, api })
+                  : col.headerStyle),
+              }}
+              onClick={() => isSortable && handleSort(col.id)}
+            >
+              {/* Drag Handle - Hidden on mobile */}
+              <span
+                className="drag-handle mr-1 shrink-0 cursor-grab hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 inline-flex"
+                title="Drag to move column"
+                tabIndex={0}
+                role="button"
+                aria-label="Drag to move column"
+                style={{ WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'none' }}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
               >
-                {/* Drag Handle - Hidden on mobile */}
-                <span
-                  className="drag-handle mr-1 shrink-0 cursor-grab hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 hidden sm:inline-flex"
-                  title="Drag to move column"
-                  tabIndex={0}
-                  role="button"
-                  aria-label="Drag to move column"
-                  style={{ WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'none' }}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
-                >
-                  <Grip className="h-4 w-4 pointer-events-none" />
-                </span>
-                {/* Header Content */}
-                <span className="flex-1 truncate">
-                  {col.headerRenderer && typeof col.headerRenderer === 'function' ? (
-                    (col.headerRenderer as (params: HeaderRendererParams<TData>) => ReactNode)({
-                      column: col,
-                      columnIndex: index,
-                      api,
-                      sortDirection,
-                      toggleSort: () => handleSort(col.id),
-                      isResizing: isColumnResizing,
-                    })
+                <Grip className="h-4 w-4 pointer-events-none" />
+              </span>
+              {/* Header Content */}
+              <span className="flex-1 truncate">
+                {col.headerRenderer && typeof col.headerRenderer === 'function' ? (
+                  (col.headerRenderer as (params: HeaderRendererParams<TData>) => ReactNode)({
+                    column: col,
+                    columnIndex: index,
+                    api,
+                    sortDirection,
+                    toggleSort: () => handleSort(col.id),
+                    isResizing: isColumnResizing,
+                  })
+                ) : (
+                  col.headerName || col.id
+                )}
+              </span>
+
+              {/* Sort Indicator - Only show when sorted on mobile */}
+              {isSortable && (
+                <span className={cn(
+                  "ml-1 shrink-0",
+                  !sortDirection && "opacity-0 group-hover:opacity-100 transition-opacity"
+                )}>
+                  {sortDirection === 'asc' ? (
+                    <ArrowUp className="h-4 w-4" />
+                  ) : sortDirection === 'desc' ? (
+                    <ArrowDown className="h-4 w-4" />
                   ) : (
-                    col.headerName || col.id
+                    <ArrowUpDown className="h-4 w-4 opacity-30" />
                   )}
                 </span>
+              )}
 
-                {/* Sort Indicator - Only show when sorted on mobile */}
-                {isSortable && (
-                  <span className={cn(
-                    "ml-1 shrink-0",
-                    !sortDirection && "hidden sm:inline-flex"
-                  )}>
-                    {sortDirection === 'asc' ? (
-                      <ArrowUp className="h-4 w-4" />
-                    ) : sortDirection === 'desc' ? (
-                      <ArrowDown className="h-4 w-4" />
-                    ) : (
-                      <ArrowUpDown className="h-4 w-4 opacity-30" />
-                    )}
-                  </span>
-                )}
+              {/* Column Menu Button - Always visible on touch or hover */}
+              <button
+                className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => handleOpenColumnMenu(e, col.id)}
+                title="Column menu"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
 
-                {/* Column Menu Button - Hidden on mobile */}
-                <button
-                  className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:block"
+              {/* Filter Indicator - Clickable to open menu */}
+              {col.filterable && (
+                <span
+                  className="ml-1 shrink-0 opacity-50 hover:opacity-100 cursor-pointer"
                   onClick={(e) => handleOpenColumnMenu(e, col.id)}
-                  title="Column menu"
+                  title="Filter"
                 >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
+                  <Filter className="h-3 w-3" />
+                </span>
+              )}
 
-                {/* Filter Indicator - Hidden on mobile */}
-                {col.filterable && (
-                  <span className="ml-1 shrink-0 opacity-50 hidden sm:inline-flex">
-                    <Filter className="h-3 w-3" />
-                  </span>
-                )}
-
-                {/* Resize Handle */}
-                {col.resizable !== false && (
-                  <div
-                    {...getResizerProps(
-                      col.id,
-                      col.computedWidth,
-                      startResize,
-                      isColumnResizing
-                    )}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+              {/* Resize Handle */}
+              {col.resizable !== false && (
+                <div
+                  {...getResizerProps(
+                    col.id,
+                    col.computedWidth,
+                    startResize,
+                    isColumnResizing
+                  )}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Column Menu */}
-      {columnMenu.isOpen && (
-        <ColumnMenu
-          state={columnMenu}
-          api={api}
-          column={columns.find(c => c.id === columnMenu.colId) || null}
-          onClose={handleCloseColumnMenu}
-        />
-      )}
-    </div>
+      {
+        columnMenu.isOpen && (
+          <ColumnMenu
+            state={columnMenu}
+            api={api}
+            column={columns.find(c => c.id === columnMenu.colId) || null}
+            onClose={handleCloseColumnMenu}
+          />
+        )
+      }
+    </div >
   );
 }
