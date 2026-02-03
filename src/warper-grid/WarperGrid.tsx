@@ -662,7 +662,7 @@ function WarperGridInner<TData extends RowData>(
 
   // Virtualizer only allocates for visible rows (paginated or full)
   const {
-    scrollElementRef,
+    scrollElementRef: virtualizerScrollRef,
     range,
     totalHeight,
     isLoading: wasmLoading,
@@ -673,6 +673,33 @@ function WarperGridInner<TData extends RowData>(
     estimateSize: () => rowHeight,
     overscan,
   });
+
+  // Header scroll ref for syncing
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const scrollElementRef = useRef<HTMLDivElement | null>(null);
+
+  // Fork ref to capture the element
+  const handleScrollRef = useCallback((node: HTMLDivElement | null) => {
+    scrollElementRef.current = node;
+    if (typeof virtualizerScrollRef === 'function') {
+      virtualizerScrollRef(node);
+    }
+  }, [virtualizerScrollRef]);
+
+  // Sync scroll from body to header
+  useEffect(() => {
+    const scrollElement = scrollElementRef.current;
+    if (!scrollElement) return;
+
+    const handleScroll = () => {
+      if (headerScrollRef.current) {
+        headerScrollRef.current.scrollLeft = scrollElement.scrollLeft;
+      }
+    };
+
+    scrollElement.addEventListener('scroll', handleScroll);
+    return () => scrollElement.removeEventListener('scroll', handleScroll);
+  }, [scrollElementRef.current]); // React to ref change
 
   // Store scrollToIndex ref
   useEffect(() => {
@@ -1319,19 +1346,6 @@ function WarperGridInner<TData extends RowData>(
         )}
         style={{ height, width, display: 'flex', flexDirection: 'column', position: 'relative', ...style }}
       >
-        {/* Loading Overlay */}
-        {(loading || wasmLoading) && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-200">
-            <div className="warper-grid-loading">
-              {loadingComponent || (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Loading data...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Error Overlay */}
         {wasmError && (
@@ -1343,7 +1357,7 @@ function WarperGridInner<TData extends RowData>(
         )}
         {/* Grid Body - Virtualized */}
         <div
-          ref={scrollElementRef}
+          ref={handleScrollRef}
           className="warper-grid-body"
           style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
           onContextMenu={handleContextMenu}
@@ -1355,6 +1369,7 @@ function WarperGridInner<TData extends RowData>(
               totalWidth={totalWidth}
               headerHeight={headerHeight}
               api={api}
+              headerScrollRef={headerScrollRef}
             />
           </div>
 

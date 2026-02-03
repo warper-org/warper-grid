@@ -83,7 +83,8 @@ const StatusBadge = memo(function StatusBadge({ value }: { value: boolean }) {
   );
 });
 
-const SalaryCell = memo(function SalaryCell({ value }: { value: number }) {
+const SalaryCell = memo(function SalaryCell({ value }: { value: number | null | undefined }) {
+  if (value == null) return <span className="text-gray-400">-</span>;
   return (
     <span className="font-mono text-emerald-600 dark:text-emerald-400">
       {'$' + value.toLocaleString()}
@@ -979,18 +980,20 @@ function App() {
                       </button>
                     </Tooltip>
 
-                    <Tooltip content="Toggle Row Grouping">
-                      <button
-                        onClick={() => togglePlugin('rowGrouping')}
-                        className={cn(
-                          'h-7 w-7 flex items-center justify-center border rounded transition-colors',
-                          pluginsEnabled.rowGrouping ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
-                        )}
-                      >
-                        <List className="w-3 h-3" />
-                      </button>
-                    </Tooltip>
                   </div>
+
+                  {/* Group By - Restored */}
+                  <Tooltip content="Toggle Row Grouping">
+                    <button
+                      onClick={() => togglePlugin('rowGrouping')}
+                      className={cn(
+                        'h-7 w-7 flex items-center justify-center border rounded transition-colors',
+                        pluginsEnabled.rowGrouping ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-(--background) text-(--foreground) border-(--border) hover:bg-(--accent)'
+                      )}
+                    >
+                      <List className="w-3 h-3" />
+                    </button>
+                  </Tooltip>
 
                   {/* Help - Hidden on mobile */}
                   <Tooltip content="Help & Shortcuts">
@@ -1012,13 +1015,7 @@ function App() {
 
           {/* Grid Content */}
           {/* Dynamically build columns from SQL result if grouping, else use default columns */}
-          {isLoadingData ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-emerald-600 dark:text-emerald-400 mb-3" />
-              <div className="text-lg text-(--foreground)">Loading data...</div>
-              <div className="text-xs text-(--muted-foreground) mt-1">Initializing SQL database</div>
-            </div>
-          ) : data.length === 0 ? (
+          {data.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-lg text-red-500">
               <div>No data returned from SQL query.</div>
               <div className="text-xs text-gray-400 mt-2">Check the SQL query, data sync, or open the browser console for details.</div>
@@ -1055,9 +1052,6 @@ function App() {
         <footer className="mt-3 hidden sm:flex items-center justify-between">
           <StatsDisplay totalRows={rawData.length} renderTime={renderTime} />
 
-          <div className="flex items-center gap-3 text-xs text-(--muted-foreground)">
-            <span>Powered by <strong className="text-emerald-600 dark:text-emerald-400">Warper WASM</strong></span>
-          </div>
         </footer>
       </div>
     </div>
